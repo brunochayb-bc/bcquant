@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import {
   RotateCcw, FileSpreadsheet, X, ChevronLeft, ChevronRight,
-  GitCompare, Search, AlertCircle, RefreshCw, Database, Clock, LogOut,
+  GitCompare, Search, AlertCircle, RefreshCw, Database, Clock,
 } from 'lucide-react'
 import {
-  auth, onAuthStateChanged,
-  loginWithGoogle, logout,
-  saveSnapshot, loadLatestSnapshot, listSnapshots, loadSnapshot,
+  saveSnapshot,
+  loadLatestSnapshot,
+  listSnapshots,
+  loadSnapshot,
 } from './lib/firebase.js'
 
 // ============================================================
@@ -227,7 +228,7 @@ const ToggleFilter = ({ active, onClick, value, tooltip }) => {
         {value}
       </button>
       {tooltip && show && (
-        <div className="absolute bottom-full left-0 mb-2 z-[200] pointer-events-none">
+        <div className="absolute bottom-full left-0 mb-2 z-50 pointer-events-none">
           <div className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-[10px] font-mono text-zinc-300 whitespace-pre-line shadow-2xl"
             style={{ lineHeight: '1.7', minWidth: '230px' }}>
             {tooltip}
@@ -539,22 +540,22 @@ const CompareModal = ({ items, onClose }) => {
 // ============================================================
 // MODAL: HISTÓRICO DE SNAPSHOTS
 // ============================================================
-const HistoryModal = ({ uid, onClose, onLoad }) => {
+const HistoryModal = ({ onClose, onLoad }) => {
   const [snapshots, setSnapshots] = React.useState([])
   const [loadingList, setLoadingList] = React.useState(true)
   const [loadingId, setLoadingId]   = React.useState(null)
 
   React.useEffect(() => {
-    listSnapshots(uid, 10)
+    listSnapshots(10)
       .then(setSnapshots)
       .catch(() => setSnapshots([]))
       .finally(() => setLoadingList(false))
-  }, [uid])
+  }, [])
 
   const handleLoad = async (docId) => {
     setLoadingId(docId)
     try {
-      const snap = await loadSnapshot(uid, docId)
+      const snap = await loadSnapshot(docId)
       if (snap) onLoad(snap)
     } finally {
       setLoadingId(null)
@@ -610,15 +611,13 @@ const HistoryModal = ({ uid, onClose, onLoad }) => {
 // MAIN APP
 // ============================================================
 export default function ScreeningApp() {
-  const [dataset, setDataset]         = React.useState([])
+  const [dataset, setDataset]       = React.useState([])
   const [datasetName, setDatasetName] = React.useState('')
-  const [updatedAt, setUpdatedAt]     = React.useState(null)
-  const [loading, setLoading]         = React.useState(false)
-  const [saving, setSaving]           = React.useState(false)
-  const [loadingDB, setLoadingDB]     = React.useState(true)
-  const [error, setError]             = React.useState('')
-  const [user, setUser]               = React.useState(null)
-  const [authLoading, setAuthLoading] = React.useState(true)
+  const [updatedAt, setUpdatedAt]   = React.useState(null)
+  const [loading, setLoading]       = React.useState(false)
+  const [saving, setSaving]         = React.useState(false)
+  const [loadingDB, setLoadingDB]   = React.useState(true)
+  const [error, setError]           = React.useState('')
 
   const [minVolume, setMinVolume]   = React.useState(800_000)
   const [volInput, setVolInput]     = React.useState('800,000')
@@ -645,21 +644,10 @@ export default function ScreeningApp() {
 
   const fileRef = useRef(null)
 
-  // ── Auth state ──────────────────────────────────────────────
+  // ── Carrega último snapshot do Firebase ao iniciar ──────────
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u)
-      setAuthLoading(false)
-    })
-    return unsub
-  }, [])
-
-  // ── Carrega último snapshot do Firebase ao logar ─────────────
-  useEffect(() => {
-    if (!user) { setLoadingDB(false); return }
     loadXLSXLib().catch(() => {})
-    setLoadingDB(true)
-    loadLatestSnapshot(user.uid)
+    loadLatestSnapshot()
       .then(snap => {
         if (snap) {
           setDataset(snap.rows)
@@ -667,9 +655,9 @@ export default function ScreeningApp() {
           setUpdatedAt(snap.updatedAt)
         }
       })
-      .catch(() => {})
+      .catch(() => {}) // Firebase não configurado ainda — ignora silenciosamente
       .finally(() => setLoadingDB(false))
-  }, [user])
+  }, [])
 
   const indicators    = useMemo(() => computeIndicators(dataset, { minVolume }), [dataset, minVolume])
   const qualityFiltered = useMemo(() => applyQualityFilters(indicators, { useRoe, minRoe, useRoe4y, minRoe4y, useCagr, minCagr, useCv, maxCv }),
@@ -729,9 +717,12 @@ export default function ScreeningApp() {
     try {
       const newData = await parseUploadedXLSX(file)
       if (newData.length === 0) throw new Error('Arquivo sem registros válidos.')
+
+      // Salva no Firebase
       setSaving(true)
       const now = new Date().toISOString()
-      await saveSnapshot(newData, file.name, user.uid)
+      await saveSnapshot(newData, file.name)
+
       setDataset(newData)
       setDatasetName(file.name)
       setUpdatedAt(now)
@@ -741,11 +732,12 @@ export default function ScreeningApp() {
     } finally {
       setLoading(false)
       setSaving(false)
+      // Limpa o input para permitir re-upload do mesmo arquivo
       if (fileRef.current) fileRef.current.value = ''
     }
   }
 
-  const handleHistoryLoad = async snap => {
+  const handleHistoryLoad = snap => {
     setDataset(snap.rows)
     setDatasetName(snap.fileName)
     setUpdatedAt(snap.updatedAt)
@@ -770,45 +762,7 @@ export default function ScreeningApp() {
 
   const sortIcon = k => sortKey !== k ? '' : sortDir === 'asc' ? ' ↑' : ' ↓'
 
-  // ── Auth loading ────────────────────────────────────────────
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-      </div>
-    )
-  }
-
-  // ── Login screen ────────────────────────────────────────────
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center p-6">
-        <div className="max-w-sm w-full text-center">
-          <div className="inline-flex items-center gap-2 mb-6">
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-            <span className="text-[10px] tracking-[0.3em] text-zinc-500 uppercase font-mono">terminal · bc</span>
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight text-zinc-50 mb-2" style={{ fontFamily: 'ui-monospace,"Geist Mono",monospace' }}>
-            BC<span className="text-blue-500">.</span>QUANT
-          </h1>
-          <p className="text-xs text-zinc-500 mb-10 tracking-wide">VALUATION · QUALIDADE · RISCO · BRASIL</p>
-          <button onClick={loginWithGoogle}
-            className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white hover:bg-zinc-100 text-zinc-900 font-medium rounded-xl transition text-sm">
-            <svg width="18" height="18" viewBox="0 0 18 18">
-              <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/>
-              <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/>
-              <path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/>
-              <path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.31z"/>
-            </svg>
-            Entrar com Google
-          </button>
-          <p className="text-[10px] text-zinc-600 mt-4 font-mono">Acesso restrito · apenas você visualiza seus dados</p>
-        </div>
-      </div>
-    )
-  }
-
-  // ── DB loading ──────────────────────────────────────────────
+  // ── Splash ─────────────────────────────────────────────────
   if (loadingDB) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
@@ -859,8 +813,8 @@ export default function ScreeningApp() {
         <div className="max-w-[1600px] mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-5">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-              <span className="text-xl font-bold tracking-tight" style={{ fontFamily: 'ui-monospace,monospace' }}>
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+              <span className="text-sm font-bold tracking-tight" style={{ fontFamily: 'ui-monospace,monospace' }}>
                 BC<span className="text-blue-500">.</span>QUANT
               </span>
             </div>
@@ -895,10 +849,6 @@ export default function ScreeningApp() {
                 </button>
               )
             }
-            <button onClick={logout} title="Sair"
-              className="p-1.5 text-zinc-600 hover:text-zinc-300 transition">
-              <LogOut size={13} />
-            </button>
           </div>
         </div>
       </header>
@@ -1069,7 +1019,7 @@ export default function ScreeningApp() {
         <CompareModal items={compareItems} onClose={() => setShowCompare(false)} />
       )}
       {showHistory && (
-        <HistoryModal uid={user.uid} onClose={() => setShowHistory(false)} onLoad={handleHistoryLoad} />
+        <HistoryModal onClose={() => setShowHistory(false)} onLoad={handleHistoryLoad} />
       )}
     </div>
   )
