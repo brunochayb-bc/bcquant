@@ -9,6 +9,9 @@ import {
   loadLatestSnapshot,
   listSnapshots,
   loadSnapshot,
+  signInWithGoogle,
+  signOutUser,
+  onAuthChange,
 } from './lib/firebase.js'
 
 // ============================================================
@@ -119,6 +122,83 @@ const computeGlobalScore = (d, allData) => {
   const cagrScore   = Math.min(100, Math.max(0, ((d.cagr + 20) / 60) * 100))
   const cvScore     = Math.min(100, Math.max(0, (1 - d.cv) * 100))
   return Math.round(grahamScore * 0.4 + roeScore * 0.25 + cagrScore * 0.2 + cvScore * 0.15)
+}
+
+// ============================================================
+// AUTH HOOK
+// ============================================================
+function useAuth() {
+  const [user, setUser]       = React.useState(undefined) // undefined = carregando
+  const [authLoading, setAuthLoading] = React.useState(false)
+  const [authError, setAuthError]     = React.useState('')
+
+  useEffect(() => {
+    const unsub = onAuthChange(u => setUser(u ?? null))
+    return unsub
+  }, [])
+
+  const login = async () => {
+    setAuthLoading(true); setAuthError('')
+    try { await signInWithGoogle() }
+    catch (e) {
+      if (e.code !== 'auth/popup-closed-by-user') setAuthError('Erro ao entrar com Google. Tente novamente.')
+    }
+    finally { setAuthLoading(false) }
+  }
+
+  const logout = async () => { await signOutUser() }
+
+  return { user, authLoading, authError, login, logout }
+}
+
+// ============================================================
+// TELA DE LOGIN
+// ============================================================
+function LoginScreen({ onLogin, loading, error }) {
+  return (
+    <div className="flex-1 flex items-center justify-center p-8">
+      <div className="max-w-sm w-full">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center shadow-2xl">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-6">
+            <TrendingUp size={24} className="text-emerald-400" />
+          </div>
+          <h2 className="text-base font-bold font-mono text-zinc-100 mb-1">Portfólio</h2>
+          <p className="text-[11px] font-mono text-zinc-500 uppercase tracking-wider mb-6">
+            Acesso restrito · BC.QUANT
+          </p>
+          <p className="text-xs text-zinc-500 mb-6 leading-relaxed">
+            Este módulo contém dados financeiros pessoais.<br />
+            Faça login com sua conta Google para continuar.
+          </p>
+          <button
+            onClick={onLogin}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 border border-zinc-700 hover:border-zinc-500 rounded-xl text-sm font-mono text-zinc-200 transition-all"
+          >
+            {loading ? (
+              <RefreshCw size={15} className="animate-spin text-zinc-400" />
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" className="shrink-0">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            )}
+            {loading ? 'Entrando...' : 'Entrar com Google'}
+          </button>
+          {error && (
+            <p className="mt-4 text-[11px] font-mono text-red-400 flex items-center justify-center gap-1.5">
+              <AlertCircle size={11} /> {error}
+            </p>
+          )}
+          <p className="mt-6 text-[10px] font-mono text-zinc-700 uppercase tracking-wider">
+            BC.QUANT · Módulo 02
+          </p>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ============================================================
@@ -1307,7 +1387,7 @@ function VisaoGeral({ carteiras, quotes, onNavigate, ocultar }) {
   )
 }
 
-function PortfolioPage() {
+function PortfolioPage({ user }) {
   const [carteiras, setCarteiras] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem(PORTFOLIO_STORAGE_KEY)) || defaultCarteiras }
     catch { return defaultCarteiras }
@@ -1534,6 +1614,7 @@ const NAV_ITEMS = [
 
 export default function App() {
   const [page, setPage] = React.useState('home')
+  const { user, authLoading, authError, login, logout } = useAuth()
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col" style={{ fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
@@ -1556,6 +1637,7 @@ export default function App() {
             {NAV_ITEMS.map(item => {
               const Icon = item.icon
               const active = page === item.id
+              const isPortfolio = item.id === 'portfolio'
               return (
                 <button key={item.id} onClick={() => setPage(item.id)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded text-[11px] font-mono uppercase tracking-wider transition ${
@@ -1565,10 +1647,33 @@ export default function App() {
                   }`}>
                   <Icon size={11} />
                   {item.label}
+                  {isPortfolio && user === null && (
+                    <span className="text-zinc-600 text-[9px]">🔒</span>
+                  )}
                 </button>
               )
             })}
           </nav>
+
+          {/* AUTH STATUS */}
+          <div className="ml-auto flex items-center gap-3">
+            {user === undefined ? (
+              <div className="w-1.5 h-1.5 bg-zinc-700 rounded-full animate-pulse" />
+            ) : user ? (
+              <div className="flex items-center gap-2">
+                {user.photoURL && (
+                  <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full border border-zinc-700" />
+                )}
+                <span className="text-[10px] font-mono text-zinc-400 hidden md:block truncate max-w-[140px]">
+                  {user.displayName || user.email}
+                </span>
+                <button onClick={logout}
+                  className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 hover:text-zinc-300 transition px-2 py-1 rounded hover:bg-zinc-800">
+                  Sair
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </header>
 
@@ -1576,7 +1681,20 @@ export default function App() {
       <main className="flex-1 flex flex-col overflow-hidden">
         {page === 'home'      && <HomePage onNavigate={setPage} />}
         {page === 'screening' && <ScreeningPage />}
-        {page === 'portfolio' && <PortfolioPage />}
+        {page === 'portfolio' && (
+          user === undefined ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mx-auto mb-4" />
+                <p className="text-[11px] font-mono uppercase tracking-widest text-zinc-500">Verificando acesso...</p>
+              </div>
+            </div>
+          ) : user ? (
+            <PortfolioPage user={user} />
+          ) : (
+            <LoginScreen onLogin={login} loading={authLoading} error={authError} />
+          )
+        )}
       </main>
     </div>
   )
