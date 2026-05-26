@@ -127,6 +127,8 @@ const computeGlobalScore = (d, allData) => {
 // ============================================================
 // AUTH HOOK
 // ============================================================
+const ALLOWED_EMAILS = ['brunochayb@gmail.com', 'bruno.chayb@gmail.com']
+
 function useAuth() {
   const [user, setUser]       = React.useState(undefined) // undefined = carregando
   const [authLoading, setAuthLoading] = React.useState(false)
@@ -139,7 +141,13 @@ function useAuth() {
 
   const login = async () => {
     setAuthLoading(true); setAuthError('')
-    try { await signInWithGoogle() }
+    try {
+      const u = await signInWithGoogle()
+      if (!ALLOWED_EMAILS.includes(u.email)) {
+        await signOutUser()
+        setAuthError('Acesso não autorizado para este e-mail.')
+      }
+    }
     catch (e) {
       if (e.code !== 'auth/popup-closed-by-user') setAuthError('Erro ao entrar com Google. Tente novamente.')
     }
