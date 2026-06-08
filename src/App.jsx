@@ -83,8 +83,8 @@ const computeIndicators = (data, filters) => {
     d.b != null && !isNaN(d.b) && d.v > filters.minVolume
   )
   return filtered.map(d => {
-    // Usa l4+l3 se l4 disponível, senão cai para l3+l2
-    const lucroMedio2y = d.l4 > 0 ? (d.l4 + d.l3) / 2 : (d.l3 + d.l2) / 2
+    // Usa lr (mais recente) + l4 (2025); se lr=0, usa l4+l3
+    const lucroMedio2y = d.lr > 0 ? (d.lr + d.l4) / 2 : (d.l4 + d.l3) / 2
     const meanLucro4y  = (d.l1 + d.l2 + d.l3 + d.l4) / 4
     const stdLucro4y   = stdDev([d.l1, d.l2, d.l3, d.l4])
     return {
