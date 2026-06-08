@@ -79,11 +79,12 @@ const rankAsc = (arr, key) => {
 }
 const computeIndicators = (data, filters) => {
   const filtered = data.filter(d =>
-    d.v > 0 && d.m > 0 && d.l4 > 0 && d.l3 > 0 && d.l2 > 0 && d.l1 > 0 && d.p > 0 &&
+    d.v > 0 && d.m > 0 && d.l3 > 0 && d.l2 > 0 && d.l1 > 0 && d.p > 0 && // l4 opcional: se zero usa l3+l2
     d.b != null && !isNaN(d.b) && d.v > filters.minVolume
   )
   return filtered.map(d => {
-    const lucroMedio2y = (d.l4 + d.l3) / 2
+    // Usa l4+l3 se l4 disponível, senão cai para l3+l2
+    const lucroMedio2y = d.l4 > 0 ? (d.l4 + d.l3) / 2 : (d.l3 + d.l2) / 2
     const meanLucro4y  = (d.l1 + d.l2 + d.l3 + d.l4) / 4
     const stdLucro4y   = stdDev([d.l1, d.l2, d.l3, d.l4])
     return {
