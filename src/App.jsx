@@ -79,7 +79,9 @@ const rankAsc = (arr, key) => {
 }
 const computeIndicators = (data, filters) => {
   const filtered = data.filter(d =>
-    d.v > 0 && d.m > 0 && d.l3 > 0 && d.l2 > 0 && d.l1 > 0 && d.p > 0 && // l4 opcional: se zero usa l3+l2
+    d.v > 0 && d.m > 0 && d.p > 0 &&
+    d.l1 > 0 && d.l2 > 0 && d.l3 > 0 && d.l4 > 0 && // todos os anos fixos positivos
+    (d.lr > 0 || d.l4 > 0) && // lucro mais recente ou 2025 positivo
     d.b != null && !isNaN(d.b) && d.v > filters.minVolume
   )
   return filtered.map(d => {
