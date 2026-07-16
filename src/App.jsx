@@ -1718,7 +1718,7 @@ function OverviewPage({ user }) {
     setAddLoading(true); setAddError('')
     try {
       const res = await fetchQuotes([t])
-      if (!res[0]) { setAddError('Ticker nao encontrado.'); setAddLoading(false); return }
+      if (!res[t]) { setAddError('Ticker nao encontrado.'); setAddLoading(false); return }
       await saveAtivos([...ativos, { ticker: t }])
       setNewTicker(''); setShowAdd(false)
     } catch { setAddError('Erro ao buscar o ticker.') }
