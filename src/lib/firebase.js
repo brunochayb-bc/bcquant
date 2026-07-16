@@ -116,3 +116,6 @@ export async function loadSnapshot(docId) {
   const snap = await getDoc(doc(db, SNAPS_COL, docId))
   return snap.exists() ? snap.data() : null
 }
+export function onAuthChange(callback) {
+  return onAuthStateChanged(auth, callback)
+}
