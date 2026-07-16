@@ -1805,6 +1805,7 @@ function OverviewPage({ user }) {
       <div className="flex flex-wrap gap-3">
         {ativos.map(a => {
           const q = quotes[a.ticker]
+          console.log('OVERVIEW q:', a.ticker, q)
           const pts = history[a.ticker] || []
           const abertura = q?.open ?? q?.previousClose ?? 0
           const preco = q?.price ?? 0
