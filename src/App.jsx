@@ -1809,6 +1809,7 @@ function OverviewPage({ user }) {
         {ativos.map(a => {
           const q = quotes[a.ticker]
           const mes = monthly[a.ticker] ?? null
+          const timeStr = q?.time ? new Date(q.time * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null
           const abertura = q?.open ?? q?.previousClose ?? 0
           const preco = q?.price ?? 0
           const dia = q?.change ?? 0
@@ -1828,7 +1829,7 @@ function OverviewPage({ user }) {
               {q ? (
                 <>
                   <div className="font-mono text-[18px] font-bold text-zinc-100 leading-tight">R$ {preco.toFixed(2)}</div>
-                  <div className="font-mono text-[9px] text-zinc-600 mb-1">({difAbs >= 0 ? '+' : ''}{difAbs.toFixed(2)})</div>
+                  <div className="font-mono text-[9px] text-zinc-600 mb-1">({difAbs >= 0 ? '+' : ''}{difAbs.toFixed(2)}){timeStr ? \` · ${timeStr}\` : ''}</div>
                   <div className="flex items-center gap-3 mb-2">
                     <div>
                       <span className="font-mono text-[9px] text-zinc-600">DIA </span>
