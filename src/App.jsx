@@ -686,7 +686,7 @@ const HistoryModal = ({ onClose, onLoad }) => {
 // ============================================================
 // PAGE: SCREENING GRAHAM
 // ============================================================
-function ScreeningPage({ user, onLogout }) {
+function ScreeningPage() {
   const [dataset, setDataset]         = React.useState([])
   const [datasetName, setDatasetName] = React.useState('')
   const [updatedAt, setUpdatedAt]     = React.useState(null)
@@ -1691,20 +1691,7 @@ export default function App() {
       {/* PAGE CONTENT */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {page === 'home'      && <HomePage onNavigate={setPage} />}
-        {page === 'screening' && (
-          user === undefined ? (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mx-auto mb-4" />
-                <p className="text-[11px] font-mono uppercase tracking-widest text-zinc-500">Verificando acesso...</p>
-              </div>
-            </div>
-          ) : user ? (
-            <ScreeningPage user={user} onLogout={logout} />
-          ) : (
-            <LoginScreen onLogin={login} loading={authLoading} error={authError} />
-          )
-        )}
+        {page === 'screening' && <ScreeningPage />}
         {page === 'portfolio' && (
           user === undefined ? (
             <div className="flex-1 flex items-center justify-center">
