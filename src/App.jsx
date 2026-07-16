@@ -1806,10 +1806,10 @@ function OverviewPage({ user }) {
         {ativos.map(a => {
           const q = quotes[a.ticker]
           const pts = history[a.ticker] || []
-          const abertura = q?.regularMarketOpen ?? q?.regularMarketPreviousClose ?? 0
-          const preco = q?.regularMarketPrice ?? 0
-          const dia = q?.regularMarketChangePercent ?? 0
-          const difAbs = q?.regularMarketChange ?? 0
+          const abertura = q?.open ?? q?.previousClose ?? 0
+          const preco = q?.price ?? 0
+          const dia = q?.change ?? 0
+          const difAbs = q?.changeAbs ?? 0
           const pos = dia >= 0
           const color = pos ? '#22c55e' : '#ef4444'
           return (
