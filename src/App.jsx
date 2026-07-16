@@ -1914,7 +1914,6 @@ export default function App() {
       <main className="flex-1 flex flex-col overflow-hidden">
         {page === 'home'      && <HomePage onNavigate={setPage} />}
         {page === 'overview'  && <OverviewPage user={user} />}
-        {page === 'overview'  && <OverviewPage user={user} />}
         {page === 'screening' && <ScreeningPage />}
         {page === 'portfolio' && (
           user === undefined ? (
