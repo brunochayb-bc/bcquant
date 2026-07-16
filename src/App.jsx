@@ -1809,6 +1809,7 @@ function OverviewPage({ user }) {
         {ativos.map(a => {
           const q = quotes[a.ticker]
           const mes = monthly[a.ticker] ?? null
+          console.log('TIME:', a.ticker, q?.time, q)
           const timeStr = q?.time ? new Date(q.time * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null
           const abertura = q?.open ?? q?.previousClose ?? 0
           const preco = q?.price ?? 0
