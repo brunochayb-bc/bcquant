@@ -1690,17 +1690,9 @@ function OverviewPage({ user }) {
     try {
       const results = await fetchQuotes(ativos.map(a => a.ticker))
       setQuotes(results)
-      const hMap = {}
-      await Promise.all(ativos.map(async a => {
-        try {
-          const url = `https://brapi.dev/api/quote/${a.ticker}?range=1d&interval=5m&token=${BRAPI_TOKEN}`
-          const r = await fetch(url)
-          const d = await r.json()
-          const pts = d?.results?.[0]?.historicalDataPrice
-          if (pts && pts.length) hMap[a.ticker] = pts.map(p => p.close ?? p.regularMarketPrice).filter(v => v != null && v > 0)
-        } catch {}
-      }))
-      setHistory(hMap)
+      // Intraday via range=1d nao disponivel no plano gratuito BRAPI
+      // Gráfico usa apenas abertura e preço atual
+      setHistory({})
     } finally { setRefreshing(false) }
   }
 
