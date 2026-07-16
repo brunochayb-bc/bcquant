@@ -1697,7 +1697,7 @@ function OverviewPage({ user }) {
           const r = await fetch(url)
           const d = await r.json()
           const pts = d?.results?.[0]?.historicalDataPrice
-          if (pts && pts.length) hMap[a.ticker] = pts.map(p => p.close).filter(Boolean)
+          if (pts && pts.length) hMap[a.ticker] = pts.map(p => p.close ?? p.regularMarketPrice).filter(v => v != null && v > 0)
         } catch {}
       }))
       setHistory(hMap)
@@ -1803,7 +1803,6 @@ function OverviewPage({ user }) {
       <div className="flex flex-wrap gap-3">
         {ativos.map(a => {
           const q = quotes[a.ticker]
-          console.log('OVERVIEW q:', a.ticker, q)
           const pts = history[a.ticker] || []
           const abertura = q?.open ?? q?.previousClose ?? 0
           const preco = q?.price ?? 0
