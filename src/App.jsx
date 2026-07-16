@@ -1652,7 +1652,7 @@ function OverviewMiniChart({ pts, abertura, color }) {
 function OverviewPage({ user }) {
   const [ativos, setAtivos]         = React.useState([])
   const [quotes, setQuotes]         = React.useState({})
-  const [history, setHistory]       = React.useState({})
+  const [monthly, setMonthly]       = React.useState({})
   const [loading, setLoading]       = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
   const [editCard, setEditCard]     = React.useState(null)
@@ -1705,7 +1705,7 @@ function OverviewPage({ user }) {
           }
         } catch {}
       }))
-      setHistory(mMap)
+      setMonthly(mMap)
     } finally { setRefreshing(false) }
   }
 
@@ -1808,7 +1808,7 @@ function OverviewPage({ user }) {
       <div className="flex flex-wrap gap-3">
         {ativos.map(a => {
           const q = quotes[a.ticker]
-          const pts = history[a.ticker] || []
+          const mes = monthly[a.ticker]
           const abertura = q?.open ?? q?.previousClose ?? 0
           const preco = q?.price ?? 0
           const dia = q?.change ?? 0
