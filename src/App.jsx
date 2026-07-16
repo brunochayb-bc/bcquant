@@ -1627,6 +1627,34 @@ export default function App() {
   const [page, setPage] = React.useState('home')
   const { user, authLoading, authError, login, logout } = useAuth()
 
+  if (user === undefined) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mx-auto mb-4" />
+          <p className="text-[11px] font-mono uppercase tracking-widest text-zinc-500">Verificando acesso...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (user === null) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center" style={{ fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
+        <div className="mb-8 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+            <span className="text-lg font-bold tracking-tight" style={{ fontFamily: 'ui-monospace,monospace' }}>
+              BC<span className="text-blue-500">.</span>QUANT
+            </span>
+          </div>
+          <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-600">Plataforma de análise quantitativa</p>
+        </div>
+        <LoginScreen onLogin={login} loading={authLoading} error={authError} />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col" style={{ fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
       {/* GLOBAL HEADER */}
