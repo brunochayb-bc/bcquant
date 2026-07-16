@@ -1808,7 +1808,7 @@ function OverviewPage({ user }) {
       <div className="flex flex-wrap gap-3">
         {ativos.map(a => {
           const q = quotes[a.ticker]
-          const mes = monthly[a.ticker]
+          const mes = monthly[a.ticker] ?? null
           const abertura = q?.open ?? q?.previousClose ?? 0
           const preco = q?.price ?? 0
           const dia = q?.change ?? 0
