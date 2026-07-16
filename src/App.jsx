@@ -4,7 +4,6 @@ import {
   GitCompare, Search, AlertCircle, RefreshCw, Database, Clock,
   BarChart2, TrendingUp, TrendingDown, Home, Edit2, Check, Wifi, WifiOff,
   Activity, Plus, Trash2, PenLine,
-  Activity, Plus, Trash2, PenLine,
 } from 'lucide-react'
 import {
   saveSnapshot,
