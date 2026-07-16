@@ -1829,12 +1829,22 @@ function OverviewPage({ user }) {
                 <>
                   <div className="font-mono text-[18px] font-bold text-zinc-100 leading-tight">R$ {preco.toFixed(2)}</div>
                   <div className="font-mono text-[9px] text-zinc-600 mb-1">({difAbs >= 0 ? '+' : ''}{difAbs.toFixed(2)})</div>
-                  <div className="mb-2">
-                    <span className={`font-mono text-[12px] font-bold ${pos ? 'text-green-400' : 'text-red-400'}`}>
-                      {pos ? '+' : ''}{dia.toFixed(2)}%
-                    </span>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div>
+                      <span className="font-mono text-[9px] text-zinc-600">DIA </span>
+                      <span className={`font-mono text-[12px] font-bold ${pos ? 'text-green-400' : 'text-red-400'}`}>
+                        {pos ? '+' : ''}{dia.toFixed(2)}%
+                      </span>
+                    </div>
+                    {mes != null && (
+                      <div>
+                        <span className="font-mono text-[9px] text-zinc-600">MÊS </span>
+                        <span className={`font-mono text-[11px] font-bold ${mes >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {mes >= 0 ? '+' : ''}{mes.toFixed(2)}%
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <OverviewMiniChart pts={[abertura, q.price]} abertura={abertura} color={color} />
                 </>
               ) : (
                 <div className="flex items-center justify-center h-16">
