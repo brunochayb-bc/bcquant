@@ -1691,7 +1691,20 @@ export default function App() {
       {/* PAGE CONTENT */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {page === 'home'      && <HomePage onNavigate={setPage} />}
-        {page === 'screening' && <ScreeningPage user={user} onLogout={logout} />}
+        {page === 'screening' && (
+          user === undefined ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mx-auto mb-4" />
+                <p className="text-[11px] font-mono uppercase tracking-widest text-zinc-500">Verificando acesso...</p>
+              </div>
+            </div>
+          ) : user ? (
+            <ScreeningPage user={user} onLogout={logout} />
+          ) : (
+            <LoginScreen onLogin={login} loading={authLoading} error={authError} />
+          )
+        )}
         {page === 'portfolio' && (
           user === undefined ? (
             <div className="flex-1 flex items-center justify-center">
