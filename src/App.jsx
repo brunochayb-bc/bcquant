@@ -1834,7 +1834,7 @@ function OverviewPage({ user }) {
                       {pos ? '+' : ''}{dia.toFixed(2)}%
                     </span>
                   </div>
-                  <OverviewMiniChart pts={pts} abertura={abertura} color={color} />
+                  <OverviewMiniChart pts={[abertura, q.price]} abertura={abertura} color={color} />
                 </>
               ) : (
                 <div className="flex items-center justify-center h-16">
