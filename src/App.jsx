@@ -303,12 +303,15 @@ async function fetchQuotes(tickers) {
       const json = await res.json()
       const q = (json.results || [])[0]
       if (q) {
-        result[q.symbol] = {
-          price:     q.regularMarketPrice,
-          change:    q.regularMarketChangePercent,
-          changeAbs: q.regularMarketChange,
-        }
-      }
+          result[q.symbol] = {
+            price:         q.regularMarketPrice,
+            change:        q.regularMarketChangePercent,
+            changeAbs:     q.regularMarketChange,
+            open:          q.regularMarketOpen,
+            previousClose: q.regularMarketPreviousClose,
+            shortName:     q.shortName || q.longName || q.symbol,
+            time:          q.regularMarketTime,
+          }
     } catch {}
   }))
   return result
