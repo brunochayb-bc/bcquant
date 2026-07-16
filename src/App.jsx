@@ -3,6 +3,8 @@ import {
   RotateCcw, FileSpreadsheet, X, ChevronLeft, ChevronRight,
   GitCompare, Search, AlertCircle, RefreshCw, Database, Clock,
   BarChart2, TrendingUp, TrendingDown, Home, Edit2, Check, Wifi, WifiOff,
+  Activity, Plus, Trash2, PenLine,
+  Activity, Plus, Trash2, PenLine,
 } from 'lucide-react'
 import {
   saveSnapshot,
@@ -12,6 +14,8 @@ import {
   signInWithGoogle,
   signOutUser,
   onAuthChange,
+  saveOverviewAtivos,
+  loadOverviewAtivos,
 } from './lib/firebase.js'
 
 // ============================================================
@@ -1615,10 +1619,239 @@ function PortfolioPage({ user }) {
   )
 }
 
+
+// ============================================================
+// OVERVIEW PAGE
+// ============================================================
+function OverviewMiniChart({ pts, abertura, color }) {
+  const svgRef = React.useRef(null)
+  React.useEffect(() => {
+    if (!svgRef.current) return
+    const W = 144, H = 44
+    const data = pts.length > 1 ? pts : (abertura ? [abertura, abertura] : [0, 0])
+    const minV = Math.min(...data, abertura)
+    const maxV = Math.max(...data, abertura)
+    const pad  = (maxV - minV) * 0.1 || 0.05
+    const toX  = (i) => (i / Math.max(data.length - 1, 1)) * W
+    const toY  = (v) => 2 + ((maxV + pad) - v) / (maxV - minV + pad * 2) * (H - 4)
+    const abY  = toY(abertura)
+    const lineD = data.map((v, i) => `${i === 0 ? 'M' : 'L'}${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ')
+    const areaD = `M0,${abY.toFixed(1)} ` + data.map((v, i) => `L${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ') + ` L${W},${abY.toFixed(1)} Z`
+    const lastX = toX(data.length - 1)
+    const lastY = toY(data[data.length - 1])
+    const fillColor = color === '#22c55e' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)'
+    svgRef.current.innerHTML = `
+      <line x1="0" y1="${abY.toFixed(1)}" x2="${W}" y2="${abY.toFixed(1)}" stroke="#3f3f46" stroke-width="0.8" stroke-dasharray="3,3"/>
+      <path d="${areaD}" fill="${fillColor}"/>
+      <path d="${lineD}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>
+      <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="2.5" fill="${color}"/>
+    `
+  }, [pts, abertura, color])
+  return <svg ref={svgRef} width="144" height="44" />
+}
+
+function OverviewPage({ user }) {
+  const [ativos, setAtivos]         = React.useState([])
+  const [quotes, setQuotes]         = React.useState({})
+  const [history, setHistory]       = React.useState({})
+  const [loading, setLoading]       = React.useState(true)
+  const [refreshing, setRefreshing] = React.useState(false)
+  const [editCard, setEditCard]     = React.useState(null)
+  const [showAdd, setShowAdd]       = React.useState(false)
+  const [newTicker, setNewTicker]   = React.useState('')
+  const [addError, setAddError]     = React.useState('')
+  const [addLoading, setAddLoading] = React.useState(false)
+  const popupRef = React.useRef(null)
+
+  useEffect(() => {
+    if (!user) return
+    loadOverviewAtivos(user.uid).then(list => {
+      setAtivos(list || [])
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [user])
+
+  useEffect(() => {
+    if (!ativos.length) { setLoading(false); return }
+    fetchAllQuotes()
+  }, [ativos])
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (popupRef.current && !popupRef.current.contains(e.target)) {
+        setEditCard(null); setShowAdd(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const fetchAllQuotes = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true)
+    try {
+      const results = await fetchQuotes(ativos.map(a => a.ticker))
+      const qMap = {}
+      results.forEach(q => { if (q) qMap[q.symbol] = q })
+      setQuotes(qMap)
+      const hMap = {}
+      await Promise.all(ativos.map(async a => {
+        try {
+          const url = `https://brapi.dev/api/quote/${a.ticker}?range=1d&interval=5m&token=${BRAPI_TOKEN}`
+          const r = await fetch(url)
+          const d = await r.json()
+          const pts = d?.results?.[0]?.historicalDataPrice
+          if (pts && pts.length) hMap[a.ticker] = pts.map(p => p.close).filter(Boolean)
+        } catch {}
+      }))
+      setHistory(hMap)
+    } finally { setRefreshing(false) }
+  }
+
+  const saveAtivos = async (list) => {
+    setAtivos(list)
+    try { await saveOverviewAtivos(user.uid, list) } catch {}
+  }
+
+  const handleAdd = async () => {
+    const t = newTicker.trim().toUpperCase()
+    if (!t) return
+    if (ativos.find(a => a.ticker === t)) { setAddError('Ativo ja adicionado.'); return }
+    setAddLoading(true); setAddError('')
+    try {
+      const res = await fetchQuotes([t])
+      if (!res[0]) { setAddError('Ticker nao encontrado.'); setAddLoading(false); return }
+      await saveAtivos([...ativos, { ticker: t }])
+      setNewTicker(''); setShowAdd(false)
+    } catch { setAddError('Erro ao buscar o ticker.') }
+    finally { setAddLoading(false) }
+  }
+
+  const handleDelete = async (ticker) => {
+    await saveAtivos(ativos.filter(a => a.ticker !== ticker))
+    setEditCard(null)
+  }
+
+  if (loading) return (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mx-auto mb-3" />
+        <p className="text-[11px] font-mono uppercase tracking-widest text-zinc-500">Carregando overview...</p>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="flex-1 flex flex-col overflow-auto bg-zinc-950 p-6">
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-500">BC.QUANT · Overview</h2>
+          <p className="text-[10px] font-mono text-zinc-700 mt-0.5">{ativos.length} ativo{ativos.length !== 1 ? 's' : ''} monitorado{ativos.length !== 1 ? 's' : ''}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => fetchAllQuotes(true)} disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-zinc-500 hover:text-zinc-300 border border-zinc-800 hover:border-zinc-600 rounded transition">
+            <RefreshCw size={10} className={refreshing ? 'animate-spin' : ''} /> Atualizar
+          </button>
+          <button onClick={() => { setShowAdd(true); setEditCard(null) }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-blue-400 border border-blue-500/30 hover:border-blue-400 rounded transition">
+            <Plus size={10} /> Adicionar
+          </button>
+        </div>
+      </div>
+
+      {showAdd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div ref={popupRef} className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-72">
+            <h3 className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 mb-4">Adicionar ativo</h3>
+            <input autoFocus value={newTicker}
+              onChange={e => { setNewTicker(e.target.value.toUpperCase()); setAddError('') }}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              placeholder="Ex: PETR4"
+              className="w-full px-3 py-2 text-sm font-mono bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-600 focus:border-blue-500/50 focus:outline-none mb-2" />
+            {addError && <p className="text-[11px] font-mono text-red-400 mb-2">{addError}</p>}
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => { setShowAdd(false); setNewTicker(''); setAddError('') }}
+                className="flex-1 px-3 py-2 text-[11px] font-mono text-zinc-500 border border-zinc-700 rounded-lg hover:bg-zinc-800 transition">Cancelar</button>
+              <button onClick={handleAdd} disabled={addLoading}
+                className="flex-1 px-3 py-2 text-[11px] font-mono text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition disabled:opacity-50">
+                {addLoading ? 'Buscando...' : 'Adicionar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editCard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div ref={popupRef} className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-64">
+            <h3 className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 mb-1">Ativo</h3>
+            <p className="text-lg font-bold font-mono text-zinc-100 mb-5">{editCard}</p>
+            <button onClick={() => handleDelete(editCard)}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-[11px] font-mono text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition">
+              <Trash2 size={12} /> Remover do Overview
+            </button>
+            <button onClick={() => setEditCard(null)}
+              className="w-full mt-2 px-3 py-2 text-[11px] font-mono text-zinc-500 border border-zinc-700 rounded-lg hover:bg-zinc-800 transition">Cancelar</button>
+          </div>
+        </div>
+      )}
+
+      {ativos.length === 0 && (
+        <div className="flex-1 flex flex-col items-center justify-center text-center">
+          <Activity size={32} className="text-zinc-700 mb-3" />
+          <p className="text-[11px] font-mono uppercase tracking-widest text-zinc-600 mb-1">Nenhum ativo adicionado</p>
+          <p className="text-[10px] font-mono text-zinc-700">Clique em "+ Adicionar" para monitorar um ativo</p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-3">
+        {ativos.map(a => {
+          const q = quotes[a.ticker]
+          const pts = history[a.ticker] || []
+          const abertura = q?.regularMarketOpen ?? q?.regularMarketPreviousClose ?? 0
+          const preco = q?.regularMarketPrice ?? 0
+          const dia = q?.regularMarketChangePercent ?? 0
+          const difAbs = q?.regularMarketChange ?? 0
+          const pos = dia >= 0
+          const color = pos ? '#22c55e' : '#ef4444'
+          return (
+            <div key={a.ticker}
+              className={`relative bg-zinc-900 rounded-xl p-3 shrink-0 transition hover:brightness-110`}
+              style={{ width: 168, border: `2px solid ${color}` }}>
+              <button onClick={(e) => { e.stopPropagation(); setEditCard(a.ticker); setShowAdd(false) }}
+                className="absolute top-2 right-2 text-zinc-700 hover:text-zinc-400 transition" aria-label="Editar">
+                <PenLine size={11} />
+              </button>
+              <div className="font-mono text-[13px] font-bold text-zinc-100">{a.ticker}</div>
+              <div className="font-mono text-[9px] text-zinc-600 mb-1 truncate">{q?.shortName || '—'}</div>
+              {q ? (
+                <>
+                  <div className="font-mono text-[18px] font-bold text-zinc-100 leading-tight">R$ {preco.toFixed(2)}</div>
+                  <div className="font-mono text-[9px] text-zinc-600 mb-1">({difAbs >= 0 ? '+' : ''}{difAbs.toFixed(2)})</div>
+                  <div className="mb-2">
+                    <span className={`font-mono text-[12px] font-bold ${pos ? 'text-green-400' : 'text-red-400'}`}>
+                      {pos ? '+' : ''}{dia.toFixed(2)}%
+                    </span>
+                  </div>
+                  <OverviewMiniChart pts={pts} abertura={abertura} color={color} />
+                </>
+              ) : (
+                <div className="flex items-center justify-center h-16">
+                  <RefreshCw size={12} className="animate-spin text-zinc-600" />
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ============================================================
 // LAYOUT: SIDEBAR + MAIN
 // ============================================================
 const NAV_ITEMS = [
+  { id: 'overview',  label: 'Overview',          icon: Activity },
   { id: 'screening', label: 'Screening Graham', icon: BarChart2 },
   { id: 'portfolio', label: 'Portfólio',         icon: TrendingUp },
 ]
@@ -1691,6 +1924,8 @@ export default function App() {
       {/* PAGE CONTENT */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {page === 'home'      && <HomePage onNavigate={setPage} />}
+        {page === 'overview'  && <OverviewPage user={user} />}
+        {page === 'overview'  && <OverviewPage user={user} />}
         {page === 'screening' && <ScreeningPage />}
         {page === 'portfolio' && (
           user === undefined ? (
