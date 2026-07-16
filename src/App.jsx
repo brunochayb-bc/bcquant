@@ -1689,9 +1689,7 @@ function OverviewPage({ user }) {
     if (isRefresh) setRefreshing(true)
     try {
       const results = await fetchQuotes(ativos.map(a => a.ticker))
-      const qMap = {}
-      results.forEach(q => { if (q) qMap[q.symbol] = q })
-      setQuotes(qMap)
+      setQuotes(results)
       const hMap = {}
       await Promise.all(ativos.map(async a => {
         try {
