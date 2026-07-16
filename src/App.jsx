@@ -312,6 +312,7 @@ async function fetchQuotes(tickers) {
             shortName:     q.shortName || q.longName || q.symbol,
             time:          q.regularMarketTime,
           }
+      }
     } catch {}
   }))
   return result
