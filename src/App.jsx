@@ -1706,6 +1706,15 @@ function OverviewPage({ user }) {
     fetchAllQuotes()
   }, [ativos])
 
+  // Auto-refresh a cada 60s (so quando a aba esta visivel)
+  useEffect(() => {
+    if (!ativos.length) return
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchAllQuotes(true)
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [ativos])
+
   useEffect(() => {
     const handler = (e) => {
       if (popupRef.current && !popupRef.current.contains(e.target)) {
@@ -1779,8 +1788,8 @@ function OverviewPage({ user }) {
     <div className="flex-1 flex flex-col overflow-auto bg-zinc-950 p-6">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-500">BC.QUANT · Overview</h2>
-          <p className="text-[10px] font-mono text-zinc-700 mt-0.5">{ativos.length} ativo{ativos.length !== 1 ? 's' : ''} monitorado{ativos.length !== 1 ? 's' : ''}</p>
+          <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-zinc-500 mb-1">BC.QUANT · Overview</p>
+          <h2 className="text-xl font-bold text-zinc-100 tracking-tight" style={{ fontFamily: 'ui-monospace,monospace' }}>{ativos.length} ativo{ativos.length !== 1 ? 's' : ''} monitorado{ativos.length !== 1 ? 's' : ''}</h2>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => fetchAllQuotes(true)} disabled={refreshing}
@@ -1839,7 +1848,11 @@ function OverviewPage({ user }) {
       )}
 
       <div className="flex flex-wrap gap-3">
-        {ativos.map(a => {
+        {[...ativos].sort((a, b) => {
+          const dA = quotes[a.ticker]?.change ?? -Infinity
+          const dB = quotes[b.ticker]?.change ?? -Infinity
+          return dB - dA
+        }).map(a => {
           const q = quotes[a.ticker]
           const mes = monthly[a.ticker] ?? null
           const timeStr = q?.time ? new Date(q.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null
