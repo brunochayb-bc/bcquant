@@ -1786,7 +1786,6 @@ async function fetchMacro() {
       }
     }
   } catch {}
-  console.log('[fetchMacro] retornando:', JSON.stringify(results))
   return results
 }
 
@@ -1868,8 +1867,12 @@ function OverviewPage({ user, onOpenTicker }) {
   const fetchAllQuotes = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
     try {
-      const results = await fetchQuotes(ativos.map(a => a.ticker))
+      const [results, macroData] = await Promise.all([
+        fetchQuotes(ativos.map(a => a.ticker)),
+        fetchMacro()
+      ])
       setQuotes(results)
+      setMacro(macroData)
       // Busca variação mensal
       const mMap = {}
       await Promise.all(ativos.map(async a => {
