@@ -1717,7 +1717,7 @@ function TradingViewChart({ ticker }) {
 
 function TickerPage({ ticker, onBack }) {
   return (
-    <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden">
+    <div className="flex-1 flex flex-col bg-zinc-950" style={{ height: '100vh' }}>
       <div className="flex items-center gap-4 px-6 py-4 border-b border-zinc-900 shrink-0">
         <button onClick={onBack} className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-zinc-500 hover:text-zinc-300 border border-zinc-800 hover:border-zinc-600 rounded transition">
           <ChevronLeft size={12} /> Voltar
@@ -1727,8 +1727,10 @@ function TickerPage({ ticker, onBack }) {
           <h2 className="text-sm font-mono text-zinc-400">{ticker}</h2>
         </div>
       </div>
-      <div className="flex-1 min-h-0 p-4">
-        <TradingViewChart ticker={ticker} />
+      <div className="flex-1 p-4" style={{ minHeight: 0 }}>
+        <div style={{ height: '100%', width: '100%' }}>
+          <TradingViewChart ticker={ticker} />
+        </div>
       </div>
     </div>
   )
