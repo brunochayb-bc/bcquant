@@ -1965,7 +1965,7 @@ function OverviewPage({ user, onOpenTicker }) {
                 {q ? (
                   <>
                     <div className="font-mono text-[20px] font-medium text-zinc-100 leading-none mb-1" style={{ letterSpacing: '-0.02em' }}>R$ {preco.toFixed(2)}</div>
-                    <div className={`font-mono text-[10px] mb-2 ${pos ? 'text-green-400/70' : 'text-red-400/70'}`}>{difAbs >= 0 ? '+' : ''}{difAbs.toFixed(2)} ({pos ? '+' : ''}{dia.toFixed(2)}%)</div>
+                    <div className={`font-mono text-[10px] mb-2 ${pos ? 'text-green-400/70' : 'text-red-400/70'}`}>{pos ? '+' : ''}{dia.toFixed(2)}% ({difAbs >= 0 ? '+' : ''}{difAbs.toFixed(2)})</div>
                     {mesPts && <div className="mb-2 -mx-1"><Sparkline pts={mesPts} color={(mes ?? 0) >= 0 ? '#22c55e' : '#ef4444'} /></div>}
                     <div className="flex gap-1.5">
                       <div className="flex-1 bg-zinc-950/60 rounded px-2 py-1.5">
@@ -2079,7 +2079,7 @@ export default function App() {
                 <span className="text-[10px] font-mono text-zinc-400 hidden md:block truncate max-w-[140px]">
                   {user.displayName || user.email}
                 </span>
-                <button onClick={logout}
+                <button onClick={() => { setPage('home'); setSelectedTicker(null); logout() }}
                   className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 hover:text-zinc-300 transition px-2 py-1 rounded hover:bg-zinc-800">
                   Sair
                 </button>
