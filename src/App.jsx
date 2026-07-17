@@ -1910,6 +1910,25 @@ export default function App() {
   const [page, setPage] = React.useState('home')
   const { user, authLoading, authError, login, logout } = useAuth()
 
+  // Auth gate global: sem login, so a tela de login
+  if (authLoading && user === undefined) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mx-auto mb-3" />
+          <p className="text-[11px] font-mono uppercase tracking-widest text-zinc-500">Verificando acesso...</p>
+        </div>
+      </div>
+    )
+  }
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex flex-col">
+        <LoginScreen onLogin={login} loading={authLoading} error={authError} />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col" style={{ fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
       {/* GLOBAL HEADER */}
@@ -2017,7 +2036,28 @@ function HomePage({ onNavigate }) {
         </div>
 
         {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button onClick={() => onNavigate('overview')}
+            className="group relative p-6 bg-zinc-900 border border-zinc-800 hover:border-amber-500/40 rounded-xl text-left transition-all hover:bg-zinc-800/60">
+            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ background: 'radial-gradient(circle at top left, rgba(245,158,11,0.05) 0%, transparent 60%)' }} />
+            <div className="relative">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                  <Activity size={16} className="text-amber-400" />
+                </div>
+                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-amber-400/70">Módulo 00</span>
+              </div>
+              <h2 className="text-base font-bold text-zinc-100 mb-2" style={{ fontFamily: 'ui-monospace,monospace' }}>Overview</h2>
+              <p className="text-xs text-zinc-500 leading-relaxed">
+                Radar de ativos monitorados em tempo real. Preço, variação diária e mensal via BRAPI, tudo em um só painel.
+              </p>
+              <div className="mt-4 flex items-center gap-1 text-[10px] font-mono text-amber-400/60 group-hover:text-amber-400 transition">
+                Acessar <ChevronRight size={10} />
+              </div>
+            </div>
+          </button>
+
           <button onClick={() => onNavigate('screening')}
             className="group relative p-6 bg-zinc-900 border border-zinc-800 hover:border-blue-500/40 rounded-xl text-left transition-all hover:bg-zinc-800/60">
             <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
