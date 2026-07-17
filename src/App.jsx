@@ -1818,6 +1818,26 @@ function MacroCard({ label, name, data, format }) {
   )
 }
 
+function MacroCardMini({ label, name, data, format }) {
+  if (!data || data.price === null || data.price === undefined || isNaN(data.price)) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900/60 border border-zinc-800 rounded-lg min-w-[180px]">
+        <RefreshCw size={10} className="animate-spin text-zinc-600" />
+        <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-zinc-600">{label}</span>
+      </div>
+    )
+  }
+  const pos = (data.change ?? 0) >= 0
+  return (
+    <div className="flex items-center gap-2.5 px-3 py-1.5 bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 rounded-lg transition-colors">
+      <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-blue-400/70">{label}</span>
+      <span className="text-[11px] font-semibold text-zinc-100" style={{ fontFamily: 'system-ui,sans-serif' }}>{name}</span>
+      <span className="font-mono text-[12px] text-zinc-100" style={{ letterSpacing: '-0.01em' }}>{format(data.price)}</span>
+      <span className={`font-mono text-[10px] ${pos ? 'text-green-400' : 'text-red-400'}`}>{pos ? '+' : ''}{(data.change ?? 0).toFixed(2)}%</span>
+    </div>
+  )
+}
+
 function OverviewPage({ user, onOpenTicker }) {
   const [ativos, setAtivos]         = React.useState([])
   const [quotes, setQuotes]         = React.useState({})
@@ -1934,10 +1954,24 @@ function OverviewPage({ user, onOpenTicker }) {
 
   return (
     <div className="flex-1 flex flex-col overflow-auto bg-zinc-950 p-6">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
         <div>
           <p className="text-[11px] font-mono uppercase tracking-[0.25em] text-blue-400 mb-1">BC.QUANT · Overview</p>
           <h2 className="text-sm font-mono text-zinc-400 tracking-tight">{ativos.length} ativo{ativos.length !== 1 ? 's' : ''} monitorado{ativos.length !== 1 ? 's' : ''}</h2>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <MacroCardMini
+            label="ÍNDICE"
+            name="IBOV"
+            data={macro.ibov}
+            format={v => v.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' pts'}
+          />
+          <MacroCardMini
+            label="CÂMBIO"
+            name="USD/BRL"
+            data={macro.usd}
+            format={v => 'R$ ' + v.toFixed(4).replace('.', ',')}
+          />
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => fetchAllQuotes(true)} disabled={refreshing}
@@ -1995,22 +2029,7 @@ function OverviewPage({ user, onOpenTicker }) {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-3 mb-4">
-        <MacroCard
-          label="ÍNDICE"
-          name="IBOV"
-          data={macro.ibov}
-          format={v => v.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' pts'}
-        />
-        <MacroCard
-          label="CÂMBIO"
-          name="USD/BRL"
-          data={macro.usd}
-          format={v => 'R$ ' + v.toFixed(4).replace('.', ',')}
-        />
-      </div>
-
-      <div className="flex flex-wrap gap-3">
+<div className="flex flex-wrap gap-3">
         {[...ativos].sort((a, b) => {
           const dA = quotes[a.ticker]?.change ?? -Infinity
           const dB = quotes[b.ticker]?.change ?? -Infinity
