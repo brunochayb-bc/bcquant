@@ -1786,6 +1786,7 @@ async function fetchMacro() {
       }
     }
   } catch {}
+  console.log('[fetchMacro] retornando:', JSON.stringify(results))
   return results
 }
 
