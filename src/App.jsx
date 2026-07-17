@@ -15,6 +15,7 @@ import {
   onAuthChange,
   saveOverviewAtivos,
   loadOverviewAtivos,
+  auth,
 } from './lib/firebase.js'
 
 // ============================================================
@@ -1715,7 +1716,9 @@ function OverviewPage({ user }) {
 
   const saveAtivos = async (list) => {
     setAtivos(list)
-    try { await saveOverviewAtivos(user.uid, list) } catch (e) { console.error("SAVE ERROR:", e) }
+    const uid = auth.currentUser?.uid || user?.uid
+    if (!uid) { console.error('SAVE ERROR: no authenticated user'); return }
+    try { await saveOverviewAtivos(uid, list) } catch (e) { console.error('SAVE ERROR:', e) }
   }
 
   const handleAdd = async () => {
