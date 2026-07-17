@@ -1771,16 +1771,16 @@ async function fetchMacro() {
     }
   } catch {}
   try {
-    const r = await fetch(`https://brapi.dev/api/v2/currency?currency=USD-BRL&token=${BRAPI_TOKEN}`)
+    const r = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL')
     if (r.ok) {
       const d = await r.json()
-      const cur = d?.currency?.[0]
+      const cur = d?.USDBRL
       if (cur) {
-        const iso = cur.updatedAtDate ? cur.updatedAtDate.replace(' ', 'T') : null
+        const iso = cur.create_date ? cur.create_date.replace(' ', 'T') + '-03:00' : null
         results.usd = {
-          price: parseFloat(cur.bidPrice),
-          change: parseFloat(cur.percentageChange),
-          changeAbs: parseFloat(cur.bidVariation),
+          price: parseFloat(cur.bid),
+          change: parseFloat(cur.pctChange),
+          changeAbs: parseFloat(cur.varBid),
           time: iso,
         }
       }
