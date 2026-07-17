@@ -1680,6 +1680,60 @@ function OverviewMiniChart({ pts, abertura, color }) {
   return <svg ref={svgRef} width="144" height="44" />
 }
 
+function TradingViewChart({ ticker }) {
+  const containerRef = React.useRef(null)
+
+  React.useEffect(() => {
+    if (!containerRef.current) return
+    const el = containerRef.current
+    el.innerHTML = '<div class="tradingview-widget-container" style="height:100%;width:100%"><div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div></div>'
+
+    const script = document.createElement('script')
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
+    script.async = true
+    script.type = 'text/javascript'
+    script.innerHTML = JSON.stringify({
+      autosize: true,
+      symbol: 'BMFBOVESPA:' + ticker,
+      interval: 'D',
+      timezone: 'America/Sao_Paulo',
+      theme: 'dark',
+      style: '1',
+      locale: 'br',
+      toolbar_bg: '#0a0a0a',
+      enable_publishing: false,
+      hide_side_toolbar: false,
+      allow_symbol_change: true,
+      backgroundColor: '#09090b',
+      gridColor: 'rgba(63,63,70,0.3)',
+    })
+    el.querySelector('.tradingview-widget-container').appendChild(script)
+
+    return () => { el.innerHTML = '' }
+  }, [ticker])
+
+  return <div ref={containerRef} className="w-full h-full" />
+}
+
+function TickerPage({ ticker, onBack }) {
+  return (
+    <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden">
+      <div className="flex items-center gap-4 px-6 py-4 border-b border-zinc-900 shrink-0">
+        <button onClick={onBack} className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-zinc-500 hover:text-zinc-300 border border-zinc-800 hover:border-zinc-600 rounded transition">
+          <ChevronLeft size={12} /> Voltar
+        </button>
+        <div>
+          <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-blue-400 mb-0.5">BC.QUANT · Ativo</p>
+          <h2 className="text-sm font-mono text-zinc-400">{ticker}</h2>
+        </div>
+      </div>
+      <div className="flex-1 min-h-0 p-4">
+        <TradingViewChart ticker={ticker} />
+      </div>
+    </div>
+  )
+}
+
 function Sparkline({ pts, color }) {
   if (!pts || pts.length < 2) return null
   const W = 152, H = 32
@@ -1699,7 +1753,7 @@ function Sparkline({ pts, color }) {
   )
 }
 
-function OverviewPage({ user }) {
+function OverviewPage({ user, onOpenTicker }) {
   const [ativos, setAtivos]         = React.useState([])
   const [quotes, setQuotes]         = React.useState({})
   const [monthly, setMonthly]       = React.useState({})
@@ -1890,6 +1944,7 @@ function OverviewPage({ user }) {
           const color = pos ? '#22c55e' : '#ef4444'
           return (
             <div key={a.ticker}
+              onClick={() => onOpenTicker && onOpenTicker(a.ticker)}
               className="group relative bg-zinc-900 rounded-xl shrink-0 overflow-hidden border border-zinc-800 transition-all duration-200 hover:-translate-y-1 hover:border-zinc-700 cursor-pointer"
               style={{ width: 184 }}
               onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 8px 24px ${pos ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'}, 0 0 0 1px ${pos ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}` }}
@@ -1948,6 +2003,8 @@ const NAV_ITEMS = [
 
 export default function App() {
   const [page, setPage] = React.useState('home')
+  const [selectedTicker, setSelectedTicker] = React.useState(null)
+  const openTicker = (t) => { setSelectedTicker(t); setPage('ticker') }
   const { user, authLoading, authError, login, logout } = useAuth()
 
   // Auth gate global: sem login, so a tela de login
@@ -2033,7 +2090,7 @@ export default function App() {
       {/* PAGE CONTENT */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {page === 'home'      && <HomePage onNavigate={setPage} />}
-        {page === 'overview'  && <OverviewPage user={user} />}
+        {page === 'overview'  && <OverviewPage user={user} onOpenTicker={openTicker} />}
         {page === 'screening' && <ScreeningPage />}
         {page === 'portfolio' && (
           user === undefined ? (
