@@ -1788,8 +1788,8 @@ function OverviewPage({ user }) {
     <div className="flex-1 flex flex-col overflow-auto bg-zinc-950 p-6">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <p className="text-[10px] font-mono uppercase tracking-[0.25em] text-zinc-500 mb-1">BC.QUANT · Overview</p>
-          <h2 className="text-xl font-bold text-zinc-100 tracking-tight" style={{ fontFamily: 'ui-monospace,monospace' }}>{ativos.length} ativo{ativos.length !== 1 ? 's' : ''} monitorado{ativos.length !== 1 ? 's' : ''}</h2>
+          <p className="text-[11px] font-mono uppercase tracking-[0.25em] text-blue-400 mb-1">BC.QUANT · Overview</p>
+          <h2 className="text-sm font-mono text-zinc-400 tracking-tight">{ativos.length} ativo{ativos.length !== 1 ? 's' : ''} monitorado{ativos.length !== 1 ? 's' : ''}</h2>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => fetchAllQuotes(true)} disabled={refreshing}
