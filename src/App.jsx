@@ -2092,20 +2092,8 @@ export default function App() {
         {page === 'home'      && <HomePage onNavigate={setPage} />}
         {page === 'overview'  && <OverviewPage user={user} onOpenTicker={openTicker} />}
         {page === 'screening' && <ScreeningPage />}
-        {page === 'portfolio' && (
-          user === undefined ? (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mx-auto mb-4" />
-                <p className="text-[11px] font-mono uppercase tracking-widest text-zinc-500">Verificando acesso...</p>
-              </div>
-            </div>
-          ) : user ? (
-            <PortfolioPage user={user} />
-          ) : (
-            <LoginScreen onLogin={login} loading={authLoading} error={authError} />
-          )
-        )}
+        {page === 'portfolio' && <PortfolioPage user={user} />}
+            {page === 'ticker'    && selectedTicker && <TickerPage ticker={selectedTicker} onBack={() => setPage('overview')} />}
       </main>
     </div>
   )
