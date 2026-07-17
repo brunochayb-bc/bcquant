@@ -1755,12 +1755,76 @@ function Sparkline({ pts, color }) {
   )
 }
 
+async function fetchMacro() {
+  const results = { ibov: null, usd: null }
+  try {
+    const r = await fetch(`https://brapi.dev/api/quote/%5EBVSP?token=${BRAPI_TOKEN}`)
+    if (r.ok) {
+      const d = await r.json()
+      const q = d?.results?.[0]
+      if (q) results.ibov = {
+        price: q.regularMarketPrice,
+        change: q.regularMarketChangePercent,
+        changeAbs: q.regularMarketChange,
+        time: q.regularMarketTime,
+      }
+    }
+  } catch {}
+  try {
+    const r = await fetch(`https://brapi.dev/api/v2/currency?currency=USD-BRL&token=${BRAPI_TOKEN}`)
+    if (r.ok) {
+      const d = await r.json()
+      const cur = d?.currency?.[0]
+      if (cur) {
+        const iso = cur.updatedAtDate ? cur.updatedAtDate.replace(' ', 'T') : null
+        results.usd = {
+          price: parseFloat(cur.bidPrice),
+          change: parseFloat(cur.percentageChange),
+          changeAbs: parseFloat(cur.bidVariation),
+          time: iso,
+        }
+      }
+    }
+  } catch {}
+  return results
+}
+
+function MacroCard({ label, name, data, format }) {
+  if (!data || data.price === null || data.price === undefined || isNaN(data.price)) {
+    return (
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-3 min-w-[200px]">
+        <div className="flex items-center justify-center h-16">
+          <RefreshCw size={11} className="animate-spin text-zinc-600" />
+        </div>
+      </div>
+    )
+  }
+  const pos = (data.change ?? 0) >= 0
+  const timeStr = data.time ? new Date(data.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null
+  return (
+    <div className="bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 rounded-xl px-4 py-3 min-w-[200px] transition-colors">
+      <div className="flex items-baseline justify-between mb-1">
+        <div className="flex items-baseline gap-2">
+          <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-blue-400/70">{label}</span>
+          <span className="text-[13px] font-semibold text-zinc-100" style={{ fontFamily: 'system-ui,sans-serif' }}>{name}</span>
+        </div>
+        {timeStr && <span className="font-mono text-[9px] text-zinc-600">{timeStr}</span>}
+      </div>
+      <div className="font-mono text-[18px] font-medium text-zinc-100 leading-none mb-1" style={{ letterSpacing: '-0.02em' }}>{format(data.price)}</div>
+      <div className={`font-mono text-[10px] ${pos ? 'text-green-400' : 'text-red-400'}`}>
+        {pos ? '+' : ''}{(data.change ?? 0).toFixed(2)}% ({(data.changeAbs ?? 0) >= 0 ? '+' : ''}{(data.changeAbs ?? 0).toFixed(2)})
+      </div>
+    </div>
+  )
+}
+
 function OverviewPage({ user, onOpenTicker }) {
   const [ativos, setAtivos]         = React.useState([])
   const [quotes, setQuotes]         = React.useState({})
   const [monthly, setMonthly]       = React.useState({})
   const [loading, setLoading]       = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
+  const [macro, setMacro]           = React.useState({ ibov: null, usd: null })
   const [editCard, setEditCard]     = React.useState(null)
   const [showAdd, setShowAdd]       = React.useState(false)
   const [newTicker, setNewTicker]   = React.useState('')
@@ -1926,6 +1990,21 @@ function OverviewPage({ user, onOpenTicker }) {
           <p className="text-[10px] font-mono text-zinc-700">Clique em "+ Adicionar" para monitorar um ativo</p>
         </div>
       )}
+
+      <div className="flex flex-wrap gap-3 mb-4">
+        <MacroCard
+          label="ÍNDICE"
+          name="IBOV"
+          data={macro.ibov}
+          format={v => v.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' pts'}
+        />
+        <MacroCard
+          label="CÂMBIO"
+          name="USD/BRL"
+          data={macro.usd}
+          format={v => 'R$ ' + v.toFixed(4).replace('.', ',')}
+        />
+      </div>
 
       <div className="flex flex-wrap gap-3">
         {[...ativos].sort((a, b) => {
