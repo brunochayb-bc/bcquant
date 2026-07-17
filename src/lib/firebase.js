@@ -14,6 +14,10 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  setPersistence,
+  browserLocalPersistence,
   signOut,
   onAuthStateChanged,
 } from 'firebase/auth'
@@ -32,7 +36,21 @@ const db   = getFirestore(app)
 const auth = getAuth(app)
 const googleProvider = new GoogleAuthProvider()
 
+// Persistencia local (sobrevive ao ITP do Safari melhor que sessao)
+setPersistence(auth, browserLocalPersistence).catch(e => console.error('setPersistence error:', e))
+
+// Trata retorno do signInWithRedirect (Safari)
+getRedirectResult(auth).catch(e => console.error('getRedirectResult error:', e))
+
+// Detecta Safari (nao Chrome/Edge que tambem tem "Safari" no UA)
+const isSafari = typeof navigator !== 'undefined' &&
+  /^((?!chrome|android|crios|edg).)*safari/i.test(navigator.userAgent)
+
 export async function signInWithGoogle() {
+  if (isSafari) {
+    await signInWithRedirect(auth, googleProvider)
+    return null // pagina recarrega, resultado tratado por getRedirectResult
+  }
   const result = await signInWithPopup(auth, googleProvider)
   return result.user
 }
