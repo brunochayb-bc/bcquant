@@ -1715,7 +1715,7 @@ function OverviewPage({ user }) {
 
   const saveAtivos = async (list) => {
     setAtivos(list)
-    try { await saveOverviewAtivos(user.uid, list) } catch {}
+    try { await saveOverviewAtivos(user.uid, list) } catch (e) { console.error("SAVE ERROR:", e) }
   }
 
   const handleAdd = async () => {
