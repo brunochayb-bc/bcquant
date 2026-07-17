@@ -190,9 +190,9 @@ function LoginScreen({ onLogin, loading, error }) {
           <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-6">
             <TrendingUp size={24} className="text-emerald-400" />
           </div>
-          <h2 className="text-base font-bold font-mono text-zinc-100 mb-1 text-center">Portfólio</h2>
+          <h2 className="text-base font-bold font-mono text-zinc-100 mb-1 text-center">BC.QUANT</h2>
           <p className="text-[11px] font-mono text-zinc-500 uppercase tracking-wider mb-6 text-center">
-            Acesso restrito · BC.QUANT
+            Acesso restrito · terminal quant
           </p>
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
@@ -234,7 +234,7 @@ function LoginScreen({ onLogin, loading, error }) {
             </p>
           )}
           <p className="mt-6 text-[10px] font-mono text-zinc-700 uppercase tracking-wider text-center">
-            BC.QUANT · Módulo 02
+            BC.QUANT · terminal
           </p>
         </div>
       </div>
@@ -2031,72 +2031,63 @@ function HomePage({ onNavigate }) {
             BC<span className="text-blue-500">.</span>QUANT
           </h1>
           <p className="text-sm text-zinc-500 tracking-widest uppercase font-mono">
-            Valuation · Qualidade · Risco · Brasil
+            Valuation · Qualidade · Risco
           </p>
         </div>
 
         {/* Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button onClick={() => onNavigate('overview')}
-            className="group relative p-6 bg-zinc-900 border border-zinc-800 hover:border-amber-500/40 rounded-xl text-left transition-all hover:bg-zinc-800/60">
+            className="group relative min-h-[200px] p-6 pb-12 bg-zinc-900 border border-zinc-800 hover:border-amber-500/40 rounded-xl transition-all hover:bg-zinc-800/60 overflow-hidden">
             <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ background: 'radial-gradient(circle at top left, rgba(245,158,11,0.05) 0%, transparent 60%)' }} />
-            <div className="relative">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                  <Activity size={16} className="text-amber-400" />
-                </div>
-                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-amber-400/70">Módulo 00</span>
+              style={{ background: 'radial-gradient(circle at top left, rgba(245,158,11,0.06) 0%, transparent 60%)' }} />
+            <div className="relative h-full flex flex-col items-center justify-center gap-4 opacity-100 group-hover:opacity-0 transition-opacity duration-200">
+              <div className="w-12 h-12 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                <Activity size={24} className="text-amber-400" />
               </div>
-              <h2 className="text-base font-bold text-zinc-100 mb-2" style={{ fontFamily: 'ui-monospace,monospace' }}>Overview</h2>
-              <p className="text-xs text-zinc-500 leading-relaxed">
-                Radar de ativos monitorados em tempo real. Preço, variação diária e mensal via BRAPI, tudo em um só painel.
-              </p>
-              <div className="mt-4 flex items-center gap-1 text-[10px] font-mono text-amber-400/60 group-hover:text-amber-400 transition">
-                Acessar <ChevronRight size={10} />
-              </div>
+              <h2 className="text-lg font-bold text-zinc-100 text-center" style={{ fontFamily: 'ui-monospace,monospace' }}>Overview</h2>
+            </div>
+            <div className="absolute inset-0 px-6 pt-6 pb-12 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+              <p className="text-xs text-zinc-300 leading-relaxed text-center">Radar de ativos monitorados em tempo real. Preço, variação diária e mensal via BRAPI, tudo em um só painel.</p>
+            </div>
+            <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-1 text-[10px] font-mono uppercase tracking-wider text-amber-400/60 group-hover:text-amber-400 transition">
+              Acessar <ChevronRight size={10} />
             </div>
           </button>
 
           <button onClick={() => onNavigate('screening')}
-            className="group relative p-6 bg-zinc-900 border border-zinc-800 hover:border-blue-500/40 rounded-xl text-left transition-all hover:bg-zinc-800/60">
+            className="group relative min-h-[200px] p-6 pb-12 bg-zinc-900 border border-zinc-800 hover:border-blue-500/40 rounded-xl transition-all hover:bg-zinc-800/60 overflow-hidden">
             <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ background: 'radial-gradient(circle at top left, rgba(59,130,246,0.05) 0%, transparent 60%)' }} />
-            <div className="relative">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                  <BarChart2 size={16} className="text-blue-400" />
-                </div>
-                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-blue-400/70">Módulo 01</span>
+              style={{ background: 'radial-gradient(circle at top left, rgba(59,130,246,0.06) 0%, transparent 60%)' }} />
+            <div className="relative h-full flex flex-col items-center justify-center gap-4 opacity-100 group-hover:opacity-0 transition-opacity duration-200">
+              <div className="w-12 h-12 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                <BarChart2 size={24} className="text-blue-400" />
               </div>
-              <h2 className="text-base font-bold text-zinc-100 mb-2" style={{ fontFamily: 'ui-monospace,monospace' }}>Screening Graham</h2>
-              <p className="text-xs text-zinc-500 leading-relaxed">
-                Análise quantitativa da B3 pelo método Graham. Ranking por valuation, qualidade e risco. Filtros, comparação e histórico de bases.
-              </p>
-              <div className="mt-4 flex items-center gap-1 text-[10px] font-mono text-blue-400/60 group-hover:text-blue-400 transition">
-                Acessar <ChevronRight size={10} />
-              </div>
+              <h2 className="text-lg font-bold text-zinc-100 text-center" style={{ fontFamily: 'ui-monospace,monospace' }}>Screening Graham</h2>
+            </div>
+            <div className="absolute inset-0 px-6 pt-6 pb-12 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+              <p className="text-xs text-zinc-300 leading-relaxed text-center">Análise quantitativa da B3 pelo método Graham. Ranking por valuation, qualidade e risco. Filtros, comparação e histórico de bases.</p>
+            </div>
+            <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-1 text-[10px] font-mono uppercase tracking-wider text-blue-400/60 group-hover:text-blue-400 transition">
+              Acessar <ChevronRight size={10} />
             </div>
           </button>
 
           <button onClick={() => onNavigate('portfolio')}
-            className="group relative p-6 bg-zinc-900 border border-zinc-800 hover:border-emerald-500/40 rounded-xl text-left transition-all hover:bg-zinc-800/60">
+            className="group relative min-h-[200px] p-6 pb-12 bg-zinc-900 border border-zinc-800 hover:border-emerald-500/40 rounded-xl transition-all hover:bg-zinc-800/60 overflow-hidden">
             <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ background: 'radial-gradient(circle at top left, rgba(16,185,129,0.05) 0%, transparent 60%)' }} />
-            <div className="relative">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                  <TrendingUp size={16} className="text-emerald-400" />
-                </div>
-                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-400/70">Módulo 02</span>
+              style={{ background: 'radial-gradient(circle at top left, rgba(16,185,129,0.06) 0%, transparent 60%)' }} />
+            <div className="relative h-full flex flex-col items-center justify-center gap-4 opacity-100 group-hover:opacity-0 transition-opacity duration-200">
+              <div className="w-12 h-12 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                <TrendingUp size={24} className="text-emerald-400" />
               </div>
-              <h2 className="text-base font-bold text-zinc-100 mb-2" style={{ fontFamily: 'ui-monospace,monospace' }}>Portfólio</h2>
-              <p className="text-xs text-zinc-500 leading-relaxed">
-                Acompanhe sua carteira em tempo real. Cotações ao vivo via BRAPI, resultado por ativo, gain/loss e valor de liquidação.
-              </p>
-              <div className="mt-4 flex items-center gap-1 text-[10px] font-mono text-emerald-400/60 group-hover:text-emerald-400 transition">
-                Acessar <ChevronRight size={10} />
-              </div>
+              <h2 className="text-lg font-bold text-zinc-100 text-center" style={{ fontFamily: 'ui-monospace,monospace' }}>Portfólio</h2>
+            </div>
+            <div className="absolute inset-0 px-6 pt-6 pb-12 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+              <p className="text-xs text-zinc-300 leading-relaxed text-center">Acompanhe sua carteira em tempo real. Cotações ao vivo via BRAPI, resultado por ativo, gain/loss e valor de liquidação.</p>
+            </div>
+            <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-1 text-[10px] font-mono uppercase tracking-wider text-emerald-400/60 group-hover:text-emerald-400 transition">
+              Acessar <ChevronRight size={10} />
             </div>
           </button>
         </div>
