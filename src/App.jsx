@@ -1813,7 +1813,6 @@ function OverviewPage({ user }) {
         {ativos.map(a => {
           const q = quotes[a.ticker]
           const mes = monthly[a.ticker] ?? null
-          console.log('TIME:', a.ticker, q?.time, q)
           const timeStr = q?.time ? new Date(q.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null
           const abertura = q?.open ?? q?.previousClose ?? 0
           const preco = q?.price ?? 0
@@ -1823,40 +1822,44 @@ function OverviewPage({ user }) {
           const color = pos ? '#22c55e' : '#ef4444'
           return (
             <div key={a.ticker}
-              className={`relative bg-zinc-900 rounded-xl p-3 shrink-0 transition hover:brightness-110`}
-              style={{ width: 168, border: `2px solid ${color}` }}>
+              className="group relative bg-zinc-900 rounded-xl shrink-0 overflow-hidden border border-zinc-800 transition-all duration-200 hover:-translate-y-1 hover:border-zinc-700 cursor-pointer"
+              style={{ width: 184 }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 8px 24px ${pos ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'}, 0 0 0 1px ${pos ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}` }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none' }}>
+              <div style={{ height: 3, background: color }} />
               <button onClick={(e) => { e.stopPropagation(); setEditCard(a.ticker); setShowAdd(false) }}
-                className="absolute top-2 right-2 text-zinc-700 hover:text-zinc-400 transition" aria-label="Editar">
+                className="absolute top-2 right-2 text-zinc-400 hover:text-zinc-100 transition opacity-0 group-hover:opacity-100 z-10 bg-zinc-900/80 rounded p-1" aria-label="Editar">
                 <PenLine size={11} />
               </button>
-              <div className="font-mono text-[13px] font-bold text-zinc-100">{a.ticker}</div>
-              <div className="font-mono text-[9px] text-zinc-600 mb-1 truncate">{q?.shortName || '—'}</div>
-              {q ? (
-                <>
-                  <div className="font-mono text-[18px] font-bold text-zinc-100 leading-tight">R$ {preco.toFixed(2)}</div>
-                  <div className="font-mono text-[9px] text-zinc-600 mb-1">({difAbs >= 0 ? '+' : ''}{difAbs.toFixed(2)}){timeStr ? ' · ' + timeStr : ''}</div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div>
-                      <span className="font-mono text-[9px] text-zinc-600">DIA </span>
-                      <span className={`font-mono text-[12px] font-bold ${pos ? 'text-green-400' : 'text-red-400'}`}>
-                        {pos ? '+' : ''}{dia.toFixed(2)}%
-                      </span>
-                    </div>
-                    {mes != null && (
-                      <div>
-                        <span className="font-mono text-[9px] text-zinc-600">MÊS </span>
-                        <span className={`font-mono text-[11px] font-bold ${mes >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {mes >= 0 ? '+' : ''}{mes.toFixed(2)}%
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-center justify-center h-16">
-                  <RefreshCw size={12} className="animate-spin text-zinc-600" />
+              <div className="p-3">
+                <div className="flex items-baseline justify-between mb-0.5">
+                  <span className="text-[14px] font-semibold text-zinc-100" style={{ fontFamily: 'system-ui, -apple-system, sans-serif', letterSpacing: '-0.01em' }}>{a.ticker}</span>
+                  {timeStr && <span className="font-mono text-[9px] text-zinc-600">{timeStr}</span>}
                 </div>
-              )}
+                <div className="text-[10px] text-zinc-500 mb-3 truncate" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>{q?.shortName || '—'}</div>
+                {q ? (
+                  <>
+                    <div className="font-mono text-[20px] font-medium text-zinc-100 leading-none mb-1" style={{ letterSpacing: '-0.02em' }}>R$ {preco.toFixed(2)}</div>
+                    <div className={`font-mono text-[10px] mb-3 ${pos ? 'text-green-400/70' : 'text-red-400/70'}`}>{difAbs >= 0 ? '+' : ''}{difAbs.toFixed(2)} ({pos ? '+' : ''}{dia.toFixed(2)}%)</div>
+                    <div className="flex gap-1.5">
+                      <div className="flex-1 bg-zinc-950/60 rounded px-2 py-1.5">
+                        <div className="text-[8px] text-zinc-500 tracking-wider mb-0.5" style={{ fontFamily: 'system-ui, sans-serif' }}>DIA</div>
+                        <div className={`font-mono text-[11px] font-medium ${pos ? 'text-green-400' : 'text-red-400'}`}>{pos ? '+' : ''}{dia.toFixed(2)}%</div>
+                      </div>
+                      {mes != null && (
+                        <div className="flex-1 bg-zinc-950/60 rounded px-2 py-1.5">
+                          <div className="text-[8px] text-zinc-500 tracking-wider mb-0.5" style={{ fontFamily: 'system-ui, sans-serif' }}>MÊS</div>
+                          <div className={`font-mono text-[11px] font-medium ${mes >= 0 ? 'text-green-400' : 'text-red-400'}`}>{mes >= 0 ? '+' : ''}{mes.toFixed(2)}%</div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-center h-16">
+                    <RefreshCw size={12} className="animate-spin text-zinc-600" />
+                  </div>
+                )}
+              </div>
             </div>
           )
         })}
