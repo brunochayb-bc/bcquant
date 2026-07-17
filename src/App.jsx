@@ -1680,6 +1680,25 @@ function OverviewMiniChart({ pts, abertura, color }) {
   return <svg ref={svgRef} width="144" height="44" />
 }
 
+function Sparkline({ pts, color }) {
+  if (!pts || pts.length < 2) return null
+  const W = 152, H = 32
+  const min = Math.min(...pts)
+  const max = Math.max(...pts)
+  const range = max - min || 1
+  const toX = (i) => (i / (pts.length - 1)) * W
+  const toY = (v) => H - ((v - min) / range) * (H - 2) - 1
+  const path = pts.map((v, i) => (i === 0 ? 'M' : 'L') + toX(i).toFixed(1) + ',' + toY(v).toFixed(1)).join(' ')
+  const areaPath = path + ' L' + W + ',' + H + ' L0,' + H + ' Z'
+  const fillColor = color === '#22c55e' ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)'
+  return (
+    <svg width="100%" height={H} viewBox={"0 0 " + W + " " + H} preserveAspectRatio="none" style={{ display: 'block' }}>
+      <path d={areaPath} fill={fillColor} />
+      <path d={path} fill="none" stroke={color} strokeWidth="1.2" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 function OverviewPage({ user }) {
   const [ativos, setAtivos]         = React.useState([])
   const [quotes, setQuotes]         = React.useState({})
@@ -1741,7 +1760,12 @@ function OverviewPage({ user }) {
           if (pts && pts.length >= 2) {
             const first = pts[0]?.close
             const last  = pts[pts.length - 1]?.close
-            if (first && last) mMap[a.ticker] = ((last - first) / first) * 100
+            if (first && last) {
+              mMap[a.ticker] = {
+                pct: ((last - first) / first) * 100,
+                pts: pts.map(p => p?.close).filter(v => typeof v === 'number')
+              }
+            }
           }
         } catch {}
       }))
@@ -1854,7 +1878,9 @@ function OverviewPage({ user }) {
           return dB - dA
         }).map(a => {
           const q = quotes[a.ticker]
-          const mes = monthly[a.ticker] ?? null
+          const mesData = monthly[a.ticker] ?? null
+          const mes = mesData?.pct ?? null
+          const mesPts = mesData?.pts ?? null
           const timeStr = q?.time ? new Date(q.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null
           const abertura = q?.open ?? q?.previousClose ?? 0
           const preco = q?.price ?? 0
@@ -1882,7 +1908,8 @@ function OverviewPage({ user }) {
                 {q ? (
                   <>
                     <div className="font-mono text-[20px] font-medium text-zinc-100 leading-none mb-1" style={{ letterSpacing: '-0.02em' }}>R$ {preco.toFixed(2)}</div>
-                    <div className={`font-mono text-[10px] mb-3 ${pos ? 'text-green-400/70' : 'text-red-400/70'}`}>{difAbs >= 0 ? '+' : ''}{difAbs.toFixed(2)} ({pos ? '+' : ''}{dia.toFixed(2)}%)</div>
+                    <div className={`font-mono text-[10px] mb-2 ${pos ? 'text-green-400/70' : 'text-red-400/70'}`}>{difAbs >= 0 ? '+' : ''}{difAbs.toFixed(2)} ({pos ? '+' : ''}{dia.toFixed(2)}%)</div>
+                    {mesPts && <div className="mb-2 -mx-1"><Sparkline pts={mesPts} color={(mes ?? 0) >= 0 ? '#22c55e' : '#ef4444'} /></div>}
                     <div className="flex gap-1.5">
                       <div className="flex-1 bg-zinc-950/60 rounded px-2 py-1.5">
                         <div className="text-[8px] text-zinc-500 tracking-wider mb-0.5" style={{ fontFamily: 'system-ui, sans-serif' }}>DIA</div>
