@@ -1083,7 +1083,7 @@ const defaultCarteiras = [
 ]
 
 // ── Tabela de uma carteira ─────────────────────────────────
-function CarteiraTable({ ativos, quotes, onEdit, onRemove, editingIdx, editBuf, setEditBuf, onSaveEdit, ocultar }) {
+function CarteiraTable({ ativos, quotes, onEdit, onRemove, editingIdx, editBuf, setEditBuf, onSaveEdit, ocultar, usdBrl }) {
   const masked = '••••••'
   const [sortKey, setSortKey] = React.useState('ticker')
   const [sortDir, setSortDir] = React.useState('asc')
@@ -1095,13 +1095,17 @@ function CarteiraTable({ ativos, quotes, onEdit, onRemove, editingIdx, editBuf, 
   const sortIcon = (key) => sortKey !== key ? ' ↕' : sortDir === 'asc' ? ' ↑' : ' ↓'
 
   const rawRows = ativos.map((item, originalIdx) => {
-    const q     = quotes[item.ticker] || {}
-    const custo = item.quantidade * item.custoMedio
-    const cot   = q.price ?? null
-    const liq   = cot != null ? item.quantidade * cot : null
-    const res   = liq != null ? liq - custo : null
-    const pct   = res != null ? (res / custo) * 100 : null
-    return { ...item, custo, cot, varDiaria: q.change ?? null, liq, res, pct, originalIdx }
+    const q      = quotes[item.ticker] || {}
+    const isUSD  = item.pais === 'US'
+    const fx     = isUSD && usdBrl ? usdBrl : 1
+    // custo sempre em BRL (custo medio USD × fx)
+    const custo  = item.quantidade * item.custoMedio * fx
+    const cotRaw = q.price ?? null
+    // liquidação em BRL
+    const liq    = cotRaw != null ? item.quantidade * cotRaw * (isUSD ? fx : 1) : null
+    const res    = liq != null ? liq - custo : null
+    const pct    = res != null && custo > 0 ? (res / custo) * 100 : null
+    return { ...item, custo, cot: cotRaw, cotBRL: cotRaw != null ? cotRaw * (isUSD ? fx : 1) : null, varDiaria: q.change ?? null, liq, res, pct, originalIdx, isUSD, fx }
   })
 
   const rows = [...rawRows].sort((a, b) => {
@@ -1157,7 +1161,16 @@ function CarteiraTable({ ativos, quotes, onEdit, onRemove, editingIdx, editBuf, 
                         : <span className="flex items-center justify-center w-5 h-5 rounded bg-red-500/15 text-red-400"><TrendingDown size={10} /></span>
                       : <span className="w-5 h-5 block" />}
                   </td>
-                  <td className="px-3 py-2.5 font-mono font-bold text-zinc-100">{row.ticker}</td>
+                  <td className="px-3 py-2.5 font-mono font-bold text-zinc-100">
+                    <div className="flex items-center gap-1.5">
+                      {row.isUSD && <span title="Mercado EUA · USD" className="text-[12px]">🇺🇸</span>}
+                      {row.pais === 'BR' && <span title="Mercado BR · BRL" className="text-[12px]">🇧🇷</span>}
+                      {row.ticker}
+                    </div>
+                    {row.isUSD && row.fx > 0 && (
+                      <div className="text-[9px] font-mono text-zinc-600 mt-0.5">USD × {row.fx.toFixed(2)}</div>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5 text-right font-mono text-zinc-300">
                     {isEditing
                       ? <input type="number" value={editBuf.quantidade} onChange={e => setEditBuf(b => ({ ...b, quantidade: e.target.value }))}
@@ -1168,11 +1181,26 @@ function CarteiraTable({ ativos, quotes, onEdit, onRemove, editingIdx, editBuf, 
                     {isEditing
                       ? <input type="number" step="0.01" value={editBuf.custoMedio} onChange={e => setEditBuf(b => ({ ...b, custoMedio: e.target.value }))}
                           className="w-24 px-2 py-0.5 bg-zinc-900 border border-blue-500/50 rounded font-mono text-zinc-200 text-right focus:outline-none text-xs" />
-                      : ocultar ? masked : fmtMoneyFull(row.custoMedio)}
+                      : ocultar ? masked : (
+                        <div>
+                          <div>{row.isUSD ? `$ ${row.custoMedio.toFixed(2)}` : fmtMoneyFull(row.custoMedio)}</div>
+                          {row.isUSD && <div className="text-[10px] text-zinc-600">USD</div>}
+                        </div>
+                      )}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-zinc-400">{ocultar ? masked : fmtMoneyFull(row.custo)}</td>
+                  <td className="px-3 py-2.5 text-right font-mono text-zinc-400">
+                    {ocultar ? masked : fmtMoneyFull(row.custo)}
+                    {row.isUSD && <div className="text-[10px] text-zinc-600">em BRL</div>}
+                  </td>
                   <td className="px-3 py-2.5 text-right font-mono text-zinc-200">
-                    {row.cot != null ? fmtMoneyFull(row.cot) : <span className="text-zinc-600">—</span>}
+                    {row.cot != null ? (
+                      <div>
+                        <div>{row.isUSD ? `$ ${row.cot.toFixed(2)}` : fmtMoneyFull(row.cot)}</div>
+                        {row.isUSD && row.cotBRL != null && (
+                          <div className="text-[10px] text-zinc-600">{fmtMoneyFull(row.cotBRL)}</div>
+                        )}
+                      </div>
+                    ) : <span className="text-zinc-600">—</span>}
                   </td>
                   <td className={`px-3 py-2.5 text-right font-mono ${row.varDiaria == null ? 'text-zinc-600' : row.varDiaria >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {row.varDiaria != null ? fmtPct(row.varDiaria, 2) : '—'}
@@ -1227,25 +1255,47 @@ function CarteiraTable({ ativos, quotes, onEdit, onRemove, editingIdx, editBuf, 
 // ============================================================
 // OUTROS ATIVOS TABLE
 // ============================================================
-function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, onEdit, onSave, onCancel, onRemove }) {
-  const outros = carteira.outros || []
-  const totalValor = outros.reduce((s, o) => s + (o.valorAtual || 0), 0)
+function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, onEdit, onSave, onCancel, onRemove, sortMode, onSortMode }) {
+  const [expandedHist, setExpandedHist] = React.useState(null)
   const masked = '••••••'
+
+  const fmtDate = (iso) => {
+    if (!iso) return '—'
+    const d = new Date(iso)
+    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const sorted = [...(carteira.outros || [])].sort((a, b) => {
+    if (sortMode === 'az') return a.nome.localeCompare(b.nome)
+    if (sortMode === 'valor') return (b.valorAtual || 0) - (a.valorAtual || 0)
+    return 0
+  })
+
+  const totalValor = (carteira.outros || []).reduce((s, o) => s + (o.valorAtual || 0), 0)
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500">{carteira.nome}</h3>
-          <p className="text-[10px] font-mono text-zinc-700 mt-0.5">{outros.length} ativo{outros.length !== 1 ? 's' : ''}</p>
+          <p className="text-[10px] font-mono text-zinc-700 mt-0.5">{(carteira.outros||[]).length} ativo{(carteira.outros||[]).length !== 1 ? 's' : ''}</p>
         </div>
-        <div className="text-right">
-          <div className="text-[9px] font-mono uppercase text-zinc-600 mb-0.5">Valor Total</div>
-          <div className="text-xl font-bold font-mono text-blue-400">{ocultar ? masked : fmtMoneyFull(totalValor)}</div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] font-mono text-zinc-600 mr-1">Ordenar:</span>
+            <button onClick={() => onSortMode(sortMode === 'az' ? 'none' : 'az')}
+              className={`px-2 py-1 text-[10px] font-mono rounded border transition ${sortMode === 'az' ? 'border-blue-500/50 text-blue-400 bg-blue-500/10' : 'border-zinc-700 text-zinc-500 hover:border-zinc-500'}`}>A→Z</button>
+            <button onClick={() => onSortMode(sortMode === 'valor' ? 'none' : 'valor')}
+              className={`px-2 py-1 text-[10px] font-mono rounded border transition ${sortMode === 'valor' ? 'border-blue-500/50 text-blue-400 bg-blue-500/10' : 'border-zinc-700 text-zinc-500 hover:border-zinc-500'}`}>Valor ↓</button>
+          </div>
+          <div className="text-right">
+            <div className="text-[9px] font-mono uppercase text-zinc-600 mb-0.5">Valor Total</div>
+            <div className="text-xl font-bold font-mono text-blue-400">{ocultar ? masked : fmtMoneyFull(totalValor)}</div>
+          </div>
         </div>
       </div>
 
-      {outros.length === 0 ? (
+      {sorted.length === 0 ? (
         <div className="text-center py-16 text-zinc-600 font-mono text-[11px] uppercase tracking-widest">
           Nenhum ativo cadastrado
         </div>
@@ -1257,43 +1307,85 @@ function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, 
                 <th className="px-4 py-2.5 text-left text-[10px] uppercase tracking-wider text-zinc-500">Ativo</th>
                 <th className="px-4 py-2.5 text-right text-[10px] uppercase tracking-wider text-zinc-500">Quantidade</th>
                 <th className="px-4 py-2.5 text-right text-[10px] uppercase tracking-wider text-zinc-500">Valor Atual</th>
+                <th className="px-4 py-2.5 text-right text-[10px] uppercase tracking-wider text-zinc-500">Atualizado</th>
                 <th className="px-4 py-2.5 text-right text-[10px] uppercase tracking-wider text-zinc-500">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {outros.map((o, idx) => (
-                <tr key={o.id} className="border-b border-zinc-800/50 hover:bg-zinc-900/30 transition">
-                  <td className="px-4 py-3 text-zinc-200 font-semibold">{o.nome}</td>
-                  {editingIdx === idx ? (
-                    <>
-                      <td className="px-4 py-2">
-                        <input type="text" value={editBuf.quantidade ?? ''}
-                          onChange={e => onEditBuf(b => ({ ...b, quantidade: e.target.value }))}
-                          className="w-24 px-2 py-1 text-xs bg-zinc-800 border border-zinc-600 rounded font-mono text-zinc-200 focus:outline-none text-right" />
+              {sorted.map((o, idx) => {
+                const realIdx = (carteira.outros||[]).findIndex(x => x.id === o.id)
+                const hist = o.historico || []
+                const varPct = hist.length >= 2
+                  ? ((hist[hist.length-1].valor - hist[hist.length-2].valor) / hist[hist.length-2].valor) * 100
+                  : null
+                return (
+                  <React.Fragment key={o.id}>
+                    <tr className="border-b border-zinc-800/50 hover:bg-zinc-900/30 transition">
+                      <td className="px-4 py-3">
+                        <div className="text-zinc-200 font-semibold">{o.nome}</div>
+                        {varPct !== null && (
+                          <div className={`text-[10px] mt-0.5 ${varPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {varPct >= 0 ? '▲' : '▼'} {Math.abs(varPct).toFixed(2)}% desde última atualização
+                          </div>
+                        )}
                       </td>
-                      <td className="px-4 py-2">
-                        <input type="text" value={editBuf.valorAtual ?? ''}
-                          onChange={e => onEditBuf(b => ({ ...b, valorAtual: e.target.value }))}
-                          onKeyDown={e => { if (e.key === 'Enter') onSave(o.id); if (e.key === 'Escape') onCancel() }}
-                          className="w-32 px-2 py-1 text-xs bg-zinc-800 border border-zinc-600 rounded font-mono text-zinc-200 focus:outline-none text-right" />
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        <button onClick={() => onSave(o.id)} className="text-emerald-400 hover:text-emerald-300 mr-2"><Check size={12} /></button>
-                        <button onClick={onCancel} className="text-zinc-500 hover:text-zinc-300"><X size={12} /></button>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="px-4 py-3 text-right text-zinc-400">{o.quantidade ?? '—'}</td>
-                      <td className="px-4 py-3 text-right text-blue-400 font-semibold">{ocultar ? masked : fmtMoneyFull(o.valorAtual || 0)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <button onClick={() => onEdit(idx)} className="text-zinc-500 hover:text-zinc-300 mr-2"><Edit2 size={11} /></button>
-                        <button onClick={() => onRemove(o.id)} className="text-zinc-600 hover:text-red-400"><X size={11} /></button>
-                      </td>
-                    </>
-                  )}
-                </tr>
-              ))}
+                      {editingIdx === realIdx ? (
+                        <>
+                          <td className="px-4 py-2">
+                            <input type="text" value={editBuf.quantidade ?? ''}
+                              onChange={e => onEditBuf(b => ({ ...b, quantidade: e.target.value }))}
+                              className="w-24 px-2 py-1 text-xs bg-zinc-800 border border-zinc-600 rounded font-mono text-zinc-200 focus:outline-none text-right" />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input type="text" value={editBuf.valorAtual ?? ''}
+                              onChange={e => onEditBuf(b => ({ ...b, valorAtual: e.target.value }))}
+                              onKeyDown={e => { if (e.key === 'Enter') onSave(o.id); if (e.key === 'Escape') onCancel() }}
+                              className="w-32 px-2 py-1 text-xs bg-zinc-800 border border-zinc-600 rounded font-mono text-zinc-200 focus:outline-none text-right" />
+                          </td>
+                          <td className="px-4 py-2 text-zinc-600 text-[10px]">agora</td>
+                          <td className="px-4 py-2 text-right">
+                            <button onClick={() => onSave(o.id)} className="text-emerald-400 hover:text-emerald-300 mr-2"><Check size={12} /></button>
+                            <button onClick={onCancel} className="text-zinc-500 hover:text-zinc-300"><X size={12} /></button>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-4 py-3 text-right text-zinc-400">{o.quantidade ?? '—'}</td>
+                          <td className="px-4 py-3 text-right text-blue-400 font-semibold">{ocultar ? masked : fmtMoneyFull(o.valorAtual || 0)}</td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="text-[10px] text-zinc-600">{fmtDate(o.atualizadoEm)}</div>
+                            {hist.length > 1 && (
+                              <button onClick={() => setExpandedHist(expandedHist === o.id ? null : o.id)}
+                                className="text-[10px] text-zinc-700 hover:text-zinc-400 transition mt-0.5">
+                                {expandedHist === o.id ? '▲ ocultar' : `▼ ${hist.length} registros`}
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button onClick={() => onEdit(realIdx)} className="text-zinc-500 hover:text-zinc-300 mr-2"><Edit2 size={11} /></button>
+                            <button onClick={() => onRemove(o.id)} className="text-zinc-600 hover:text-red-400"><X size={11} /></button>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                    {expandedHist === o.id && hist.length > 0 && (
+                      <tr className="bg-zinc-900/50">
+                        <td colSpan={5} className="px-6 py-3">
+                          <div className="text-[9px] font-mono uppercase text-zinc-600 mb-2">Histórico de valores</div>
+                          <div className="space-y-1">
+                            {[...hist].reverse().map((h, hi) => (
+                              <div key={hi} className="flex items-center justify-between text-[11px] font-mono">
+                                <span className="text-zinc-600">{fmtDate(h.data)}</span>
+                                <span className="text-zinc-300">{fmtMoneyFull(h.valor)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -1582,6 +1674,9 @@ function PortfolioPage({ user }) {
   const [newOutroValor, setNewOutroValor]     = React.useState('')
   const [editingOutroIdx, setEditingOutroIdx] = React.useState(null)
   const [editOutroBuf, setEditOutroBuf]       = React.useState({})
+  const [newAtivoPais, setNewAtivoPais]       = React.useState('BR')
+  const [outrosSort, setOutrosSort]           = React.useState('none') // 'az' | 'valor' | 'none'
+  const [usdBrl, setUsdBrl]                   = React.useState(null)
 
   useEffect(() => {
     try { localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(carteiras)) } catch {}
@@ -1589,8 +1684,18 @@ function PortfolioPage({ user }) {
 
   const allTickers = [...new Set(carteiras.flatMap(c => c.ativos.map(a => a.ticker)))]
 
+  const fetchUsdBrl = async () => {
+    try {
+      const r = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL')
+      const d = await r.json()
+      const cur = d?.USDBRL
+      if (cur?.bid) setUsdBrl(parseFloat(cur.bid))
+    } catch {}
+  }
+
   const fetchAll = async () => {
     setLoading(true)
+    await fetchUsdBrl()
     const result = await fetchQuotes(allTickers)
     setOnline(Object.keys(result).length > 0)
     setQuotes(result)
@@ -1623,8 +1728,9 @@ function PortfolioPage({ user }) {
   const addItem = () => {
     const t = newTicker.trim().toUpperCase()
     if (!t || !activeCarteira) return
-    updateAtivos(activeTab, ativos => [...ativos, { ticker: t, quantidade: 0, custoMedio: 0 }])
+    updateAtivos(activeTab, ativos => [...ativos, { ticker: t, quantidade: 0, custoMedio: 0, pais: newAtivoPais }])
     setNewTicker('')
+    setNewAtivoPais('BR')
     setShowAdd(false)
     setTimeout(() => setEditingIdx(activeCarteira.ativos.length), 50)
   }
@@ -1666,8 +1772,13 @@ function PortfolioPage({ user }) {
     const qtd   = parseFloat(String(newOutroQtd).replace(',', '.')) || 0
     const valor = parseFloat(String(newOutroValor).replace(',', '.')) || 0
     if (!nome) return
+    const agora = new Date().toISOString()
     setCarteiras(prev => prev.map(c => c.id === activeTab
-      ? { ...c, outros: [...(c.outros || []), { id: Date.now(), nome, quantidade: qtd, valorAtual: valor }] }
+      ? { ...c, outros: [...(c.outros || []), {
+          id: Date.now(), nome, quantidade: qtd, valorAtual: valor,
+          atualizadoEm: agora,
+          historico: valor > 0 ? [{ data: agora, valor }] : []
+        }] }
       : c))
     setNewOutroNome(''); setNewOutroQtd(''); setNewOutroValor(''); setShowAddOutro(false)
   }
@@ -1679,8 +1790,13 @@ function PortfolioPage({ user }) {
   const saveEditOutro = (carteiraId, outroId) => {
     const qtd   = parseFloat(String(editOutroBuf.quantidade || '').replace(',', '.')) || 0
     const valor = parseFloat(String(editOutroBuf.valorAtual || '').replace(',', '.')) || 0
+    const agora = new Date().toISOString()
     setCarteiras(prev => prev.map(c => c.id === carteiraId
-      ? { ...c, outros: (c.outros || []).map(o => o.id === outroId ? { ...o, quantidade: qtd, valorAtual: valor } : o) }
+      ? { ...c, outros: (c.outros || []).map(o => {
+          if (o.id !== outroId) return o
+          const hist = [...(o.historico || []), { data: agora, valor }]
+          return { ...o, quantidade: qtd, valorAtual: valor, atualizadoEm: agora, historico: hist }
+        }) }
       : c))
     setEditingOutroIdx(null)
   }
@@ -1802,14 +1918,26 @@ function PortfolioPage({ user }) {
 
       {/* ADD TICKER */}
       {showAdd && activeTab !== 'geral' && (
-        <div className="px-6 py-3 border-b border-zinc-800 bg-zinc-900/50 flex items-center gap-3">
+        <div className="px-6 py-3 border-b border-zinc-800 bg-zinc-900/50 flex items-center gap-3 flex-wrap">
           <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Novo ativo:</span>
-          <input autoFocus type="text" placeholder="Ex: PETR4" value={newTicker}
+          <input autoFocus type="text" placeholder="Ex: PETR4 ou VOO" value={newTicker}
             onChange={e => setNewTicker(e.target.value.toUpperCase())}
             onKeyDown={e => { if (e.key === 'Enter') addItem(); if (e.key === 'Escape') setShowAdd(false) }}
-            className="px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded font-mono text-zinc-200 focus:border-blue-500/50 focus:outline-none w-32" />
+            className="px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded font-mono text-zinc-200 focus:border-blue-500/50 focus:outline-none w-36" />
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] font-mono text-zinc-500 mr-1">Mercado:</span>
+            <button onClick={() => setNewAtivoPais('BR')}
+              className={`px-2 py-1 text-[13px] rounded border transition ${newAtivoPais === 'BR' ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-zinc-700 hover:border-zinc-500'}`}
+              title="Brasil">🇧🇷</button>
+            <button onClick={() => setNewAtivoPais('US')}
+              className={`px-2 py-1 text-[13px] rounded border transition ${newAtivoPais === 'US' ? 'border-blue-500/50 bg-blue-500/10' : 'border-zinc-700 hover:border-zinc-500'}`}
+              title="Estados Unidos">🇺🇸</button>
+          </div>
+          {newAtivoPais === 'US' && (
+            <span className="text-[10px] font-mono text-blue-400">Custo médio em USD · liquidação em BRL</span>
+          )}
           <button onClick={addItem} className="px-3 py-1.5 text-[10px] font-mono uppercase bg-blue-600 hover:bg-blue-500 text-white rounded transition">Adicionar</button>
-          <button onClick={() => setShowAdd(false)} className="text-[10px] font-mono text-zinc-500 hover:text-zinc-300 transition">Cancelar</button>
+          <button onClick={() => { setShowAdd(false); setNewAtivoPais('BR') }} className="text-[10px] font-mono text-zinc-500 hover:text-zinc-300 transition">Cancelar</button>
         </div>
       )}
 
@@ -1879,11 +2007,14 @@ function PortfolioPage({ user }) {
                 onSave={outroId => saveEditOutro(activeTab, outroId)}
                 onCancel={() => setEditingOutroIdx(null)}
                 onRemove={outroId => removeOutro(activeTab, outroId)}
+                sortMode={outrosSort}
+                onSortMode={setOutrosSort}
               />
           : activeCarteira
             ? <CarteiraTable
                 ativos={activeCarteira.ativos}
                 quotes={quotes}
+                usdBrl={usdBrl}
                 onEdit={startEdit}
                 onRemove={removeItem}
                 editingIdx={editingIdx}
