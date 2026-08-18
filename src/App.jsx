@@ -1223,8 +1223,91 @@ function CarteiraTable({ ativos, quotes, onEdit, onRemove, editingIdx, editBuf, 
 }
 
 // ── Visão geral consolidada ────────────────────────────────
+
+// ============================================================
+// OUTROS ATIVOS TABLE
+// ============================================================
+function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, onEdit, onSave, onCancel, onRemove }) {
+  const outros = carteira.outros || []
+  const totalValor = outros.reduce((s, o) => s + (o.valorAtual || 0), 0)
+  const masked = '••••••'
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500">{carteira.nome}</h3>
+          <p className="text-[10px] font-mono text-zinc-700 mt-0.5">{outros.length} ativo{outros.length !== 1 ? 's' : ''}</p>
+        </div>
+        <div className="text-right">
+          <div className="text-[9px] font-mono uppercase text-zinc-600 mb-0.5">Valor Total</div>
+          <div className="text-xl font-bold font-mono text-blue-400">{ocultar ? masked : fmtMoneyFull(totalValor)}</div>
+        </div>
+      </div>
+
+      {outros.length === 0 ? (
+        <div className="text-center py-16 text-zinc-600 font-mono text-[11px] uppercase tracking-widest">
+          Nenhum ativo cadastrado
+        </div>
+      ) : (
+        <div className="border border-zinc-800 rounded-xl overflow-hidden">
+          <table className="w-full text-xs font-mono">
+            <thead>
+              <tr className="border-b border-zinc-800 bg-zinc-900/50">
+                <th className="px-4 py-2.5 text-left text-[10px] uppercase tracking-wider text-zinc-500">Ativo</th>
+                <th className="px-4 py-2.5 text-right text-[10px] uppercase tracking-wider text-zinc-500">Quantidade</th>
+                <th className="px-4 py-2.5 text-right text-[10px] uppercase tracking-wider text-zinc-500">Valor Atual</th>
+                <th className="px-4 py-2.5 text-right text-[10px] uppercase tracking-wider text-zinc-500">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {outros.map((o, idx) => (
+                <tr key={o.id} className="border-b border-zinc-800/50 hover:bg-zinc-900/30 transition">
+                  <td className="px-4 py-3 text-zinc-200 font-semibold">{o.nome}</td>
+                  {editingIdx === idx ? (
+                    <>
+                      <td className="px-4 py-2">
+                        <input type="text" value={editBuf.quantidade ?? ''}
+                          onChange={e => onEditBuf(b => ({ ...b, quantidade: e.target.value }))}
+                          className="w-24 px-2 py-1 text-xs bg-zinc-800 border border-zinc-600 rounded font-mono text-zinc-200 focus:outline-none text-right" />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input type="text" value={editBuf.valorAtual ?? ''}
+                          onChange={e => onEditBuf(b => ({ ...b, valorAtual: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter') onSave(o.id); if (e.key === 'Escape') onCancel() }}
+                          className="w-32 px-2 py-1 text-xs bg-zinc-800 border border-zinc-600 rounded font-mono text-zinc-200 focus:outline-none text-right" />
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <button onClick={() => onSave(o.id)} className="text-emerald-400 hover:text-emerald-300 mr-2"><Check size={12} /></button>
+                        <button onClick={onCancel} className="text-zinc-500 hover:text-zinc-300"><X size={12} /></button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-4 py-3 text-right text-zinc-400">{o.quantidade ?? '—'}</td>
+                      <td className="px-4 py-3 text-right text-blue-400 font-semibold">{ocultar ? masked : fmtMoneyFull(o.valorAtual || 0)}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button onClick={() => onEdit(idx)} className="text-zinc-500 hover:text-zinc-300 mr-2"><Edit2 size={11} /></button>
+                        <button onClick={() => onRemove(o.id)} className="text-zinc-600 hover:text-red-400"><X size={11} /></button>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function VisaoGeral({ carteiras, quotes, onNavigate, ocultar }) {
   const carteiraStats = carteiras.map(c => {
+    if (c.tipo === 'outros') {
+      const totalValor = (c.outros || []).reduce((s, o) => s + (o.valorAtual || 0), 0)
+      return { ...c, totalCusto: 0, totalLiq: totalValor, totalRes: 0, totalPct: 0, isOutros: true }
+    }
     const rows = c.ativos.map(item => {
       const q     = quotes[item.ticker] || {}
       const custo = item.quantidade * item.custoMedio
@@ -1237,14 +1320,19 @@ function VisaoGeral({ carteiras, quotes, onNavigate, ocultar }) {
     const totalLiq   = rows.reduce((s, r) => s + r.liq, 0)
     const totalRes   = totalLiq - totalCusto
     const totalPct   = totalCusto > 0 ? (totalRes / totalCusto) * 100 : 0
-    return { ...c, totalCusto, totalLiq, totalRes, totalPct }
+    return { ...c, totalCusto, totalLiq, totalRes, totalPct, isOutros: false }
   })
 
-  const grandCusto  = carteiraStats.reduce((s, c) => s + c.totalCusto, 0)
-  const grandLiq    = carteiraStats.reduce((s, c) => s + c.totalLiq, 0)
+  // RV only for retorno
+  const rvStats     = carteiraStats.filter(c => !c.isOutros)
+  const grandCusto  = rvStats.reduce((s, c) => s + c.totalCusto, 0)
+  const grandLiq    = rvStats.reduce((s, c) => s + c.totalLiq, 0)
   const grandRes    = grandLiq - grandCusto
   const grandPct    = grandCusto > 0 ? (grandRes / grandCusto) * 100 : 0
-  const totalAtivos = carteiras.reduce((s, c) => s + c.ativos.length, 0)
+  // Total patrimônio = RV + Outros
+  const outrosTotal = carteiraStats.filter(c => c.isOutros).reduce((s, c) => s + c.totalLiq, 0)
+  const patrimonioTotal = grandLiq + outrosTotal
+  const totalAtivos = carteiras.reduce((s, c) => s + (c.tipo === 'outros' ? (c.outros||[]).length : c.ativos.length), 0)
   const isGain      = grandRes >= 0
 
   const masked = '••••••'
@@ -1261,32 +1349,45 @@ function VisaoGeral({ carteiras, quotes, onNavigate, ocultar }) {
         <div className="relative px-8 py-7">
           <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-zinc-500 mb-5">Consolidado · todas as carteiras</div>
           <div className="flex flex-wrap items-end gap-8">
-            {/* Retorno % — destaque principal */}
+            {/* Patrimônio total — destaque principal */}
             <div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Retorno total</div>
-              <div className={`text-5xl font-bold font-mono leading-none ${isGain ? 'text-emerald-400' : 'text-red-400'}`}>
+              <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Patrimônio total</div>
+              <div className="text-5xl font-bold font-mono leading-none text-zinc-100">
+                {ocultar ? masked : fmtMoneyFull(patrimonioTotal)}
+              </div>
+            </div>
+            <div className="w-px h-12 bg-zinc-800 hidden md:block" />
+            {/* Retorno RV */}
+            <div>
+              <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Retorno RV</div>
+              <div className={`text-2xl font-bold font-mono ${isGain ? 'text-emerald-400' : 'text-red-400'}`}>
                 {fmtPct(grandPct, 2)}
               </div>
             </div>
             <div className="w-px h-12 bg-zinc-800 hidden md:block" />
-            {/* Resultado em R$ */}
+            {/* Resultado RV */}
             <div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Resultado</div>
-              <div className={`text-2xl font-bold font-mono ${isGain ? 'text-emerald-400' : 'text-red-400'}`}>
+              <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Resultado RV</div>
+              <div className={`text-xl font-bold font-mono ${isGain ? 'text-emerald-400' : 'text-red-400'}`}>
                 {ocultar ? masked : (grandRes >= 0 ? '+' : '') + fmtMoneyFull(grandRes)}
               </div>
             </div>
             <div className="w-px h-12 bg-zinc-800 hidden md:block" />
-            {/* Investido */}
+            {/* Investido RV */}
             <div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Investido</div>
+              <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Investido RV</div>
               <div className="text-xl font-mono text-zinc-300">{ocultar ? masked : fmtMoneyFull(grandCusto)}</div>
             </div>
-            {/* Valor atual */}
-            <div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Valor atual</div>
-              <div className="text-xl font-mono text-zinc-300">{ocultar ? masked : fmtMoneyFull(grandLiq)}</div>
-            </div>
+            {/* Outros ativos */}
+            {outrosTotal > 0 && (
+              <>
+                <div className="w-px h-12 bg-zinc-800 hidden md:block" />
+                <div>
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Outros ativos</div>
+                  <div className="text-xl font-mono text-blue-400">{ocultar ? masked : fmtMoneyFull(outrosTotal)}</div>
+                </div>
+              </>
+            )}
           </div>
           {/* Stats menores */}
           <div className="flex gap-6 mt-5 pt-5 border-t border-zinc-800">
@@ -1311,6 +1412,31 @@ function VisaoGeral({ carteiras, quotes, onNavigate, ocultar }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {carteiraStats.map(c => {
             const gain = c.totalRes >= 0
+            const numAtivos = c.isOutros ? (c.outros||[]).length : c.ativos.length
+            if (c.isOutros) return (
+              <button key={c.id} onClick={() => onNavigate(c.id)}
+                className="group relative bg-zinc-900 border border-zinc-800 hover:border-blue-800 rounded-xl p-5 text-left transition-all overflow-hidden">
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                  style={{ background: 'radial-gradient(ellipse at top left, rgba(59,130,246,0.04) 0%, transparent 60%)' }} />
+                <div className="relative">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] text-blue-600">◆</span>
+                        <div className="text-sm font-bold font-mono text-zinc-100">{c.nome}</div>
+                      </div>
+                      <div className="text-[10px] font-mono text-zinc-600 mt-0.5">{numAtivos} ativos · outros</div>
+                    </div>
+                    <div className="text-2xl font-bold font-mono text-blue-400">
+                      {ocultar ? masked : fmtMoneyFull(c.totalLiq)}
+                    </div>
+                  </div>
+                  <div className="mt-3 text-[10px] font-mono text-zinc-600 group-hover:text-zinc-400 transition flex items-center gap-1">
+                    Ver carteira <ChevronRight size={10} />
+                  </div>
+                </div>
+              </button>
+            )
             return (
               <button key={c.id} onClick={() => onNavigate(c.id)}
                 className="group relative bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-xl p-5 text-left transition-all overflow-hidden">
@@ -1319,23 +1445,19 @@ function VisaoGeral({ carteiras, quotes, onNavigate, ocultar }) {
                     ? 'radial-gradient(ellipse at top left, rgba(16,185,129,0.04) 0%, transparent 60%)'
                     : 'radial-gradient(ellipse at top left, rgba(239,68,68,0.04) 0%, transparent 60%)' }} />
                 <div className="relative">
-                  {/* Header */}
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <div className="text-sm font-bold font-mono text-zinc-100">{c.nome}</div>
-                      <div className="text-[10px] font-mono text-zinc-600 mt-0.5">{c.ativos.length} ativos</div>
+                      <div className="text-[10px] font-mono text-zinc-600 mt-0.5">{numAtivos} ativos</div>
                     </div>
-                    {/* % destaque */}
                     <div className={`text-2xl font-bold font-mono ${gain ? 'text-emerald-400' : 'text-red-400'}`}>
                       {fmtPct(c.totalPct, 2)}
                     </div>
                   </div>
-                  {/* Barra de progresso visual */}
                   <div className="w-full h-0.5 bg-zinc-800 rounded-full mb-4 overflow-hidden">
                     <div className={`h-full rounded-full transition-all ${gain ? 'bg-emerald-500' : 'bg-red-500'}`}
                       style={{ width: `${Math.min(100, Math.abs(c.totalPct))}%` }} />
                   </div>
-                  {/* Valores */}
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <div className="text-[9px] font-mono uppercase text-zinc-600 mb-0.5">Investido</div>
@@ -1448,7 +1570,18 @@ function PortfolioPage({ user }) {
   const [showAdd, setShowAdd]     = React.useState(false)
   const [showNewCarteira, setShowNewCarteira] = React.useState(false)
   const [newCarteiraNome, setNewCarteiraNome] = React.useState('')
+  const [newCarteiraTipo, setNewCarteiraTipo] = React.useState('rv')
+  const [renamingId, setRenamingId]           = React.useState(null)
+  const [renameValue, setRenameValue]         = React.useState('')
+  const [dragOver, setDragOver]               = React.useState(null)
   const [ocultar, setOcultar]     = React.useState(false)
+  // Outros Ativos state
+  const [showAddOutro, setShowAddOutro]       = React.useState(false)
+  const [newOutroNome, setNewOutroNome]       = React.useState('')
+  const [newOutroQtd, setNewOutroQtd]         = React.useState('')
+  const [newOutroValor, setNewOutroValor]     = React.useState('')
+  const [editingOutroIdx, setEditingOutroIdx] = React.useState(null)
+  const [editOutroBuf, setEditOutroBuf]       = React.useState({})
 
   useEffect(() => {
     try { localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(carteiras)) } catch {}
@@ -1499,10 +1632,57 @@ function PortfolioPage({ user }) {
     const nome = newCarteiraNome.trim()
     if (!nome) return
     const id = nome.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now()
-    setCarteiras(prev => [...prev, { id, nome, ativos: [] }])
+    setCarteiras(prev => [...prev, { id, nome, tipo: newCarteiraTipo, ativos: [], outros: [] }])
     setActiveTab(id)
     setNewCarteiraNome('')
+    setNewCarteiraTipo('rv')
     setShowNewCarteira(false)
+  }
+  const renameCarteira = (id) => {
+    const nome = renameValue.trim()
+    if (!nome) { setRenamingId(null); return }
+    setCarteiras(prev => prev.map(c => c.id === id ? { ...c, nome } : c))
+    setRenamingId(null)
+  }
+  // Drag & drop reorder
+  const handleDragStart = (e, id) => { e.dataTransfer.setData('text/plain', id) }
+  const handleDrop = (e, targetId) => {
+    e.preventDefault()
+    const srcId = e.dataTransfer.getData('text/plain')
+    if (srcId === targetId) { setDragOver(null); return }
+    setCarteiras(prev => {
+      const arr = [...prev]
+      const si  = arr.findIndex(c => c.id === srcId)
+      const ti  = arr.findIndex(c => c.id === targetId)
+      const [item] = arr.splice(si, 1)
+      arr.splice(ti, 0, item)
+      return arr
+    })
+    setDragOver(null)
+  }
+  // Outros ativos helpers
+  const addOutro = () => {
+    const nome  = newOutroNome.trim()
+    const qtd   = parseFloat(String(newOutroQtd).replace(',', '.')) || 0
+    const valor = parseFloat(String(newOutroValor).replace(',', '.')) || 0
+    if (!nome) return
+    setCarteiras(prev => prev.map(c => c.id === activeTab
+      ? { ...c, outros: [...(c.outros || []), { id: Date.now(), nome, quantidade: qtd, valorAtual: valor }] }
+      : c))
+    setNewOutroNome(''); setNewOutroQtd(''); setNewOutroValor(''); setShowAddOutro(false)
+  }
+  const removeOutro = (carteiraId, outroId) => {
+    setCarteiras(prev => prev.map(c => c.id === carteiraId
+      ? { ...c, outros: (c.outros || []).filter(o => o.id !== outroId) }
+      : c))
+  }
+  const saveEditOutro = (carteiraId, outroId) => {
+    const qtd   = parseFloat(String(editOutroBuf.quantidade || '').replace(',', '.')) || 0
+    const valor = parseFloat(String(editOutroBuf.valorAtual || '').replace(',', '.')) || 0
+    setCarteiras(prev => prev.map(c => c.id === carteiraId
+      ? { ...c, outros: (c.outros || []).map(o => o.id === outroId ? { ...o, quantidade: qtd, valorAtual: valor } : o) }
+      : c))
+    setEditingOutroIdx(null)
   }
   const removeCarteira = (id) => {
     setCarteiras(prev => prev.filter(c => c.id !== id))
@@ -1552,9 +1732,15 @@ function PortfolioPage({ user }) {
               className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider border rounded-lg transition ${ocultar ? 'border-blue-500/40 text-blue-400 bg-blue-500/10' : 'border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600'}`}>
               {ocultar ? '👁 Mostrar' : '🙈 Ocultar'}
             </button>
-            {activeTab !== 'geral' && (
+            {activeTab !== 'geral' && activeCarteira?.tipo !== 'outros' && (
               <button onClick={() => setShowAdd(true)}
                 className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-zinc-100 rounded-lg transition">
+                + Ativo
+              </button>
+            )}
+            {activeTab !== 'geral' && activeCarteira?.tipo === 'outros' && (
+              <button onClick={() => setShowAddOutro(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider border border-blue-800 hover:border-blue-600 text-blue-400 hover:text-blue-100 rounded-lg transition">
                 + Ativo
               </button>
             )}
@@ -1573,12 +1759,33 @@ function PortfolioPage({ user }) {
             Visão Geral
           </button>
           {carteiras.map(c => (
-            <div key={c.id} className="relative group flex items-center">
-              <button onClick={() => { setActiveTab(c.id); setEditingIdx(null) }}
-                className={`px-4 py-2.5 text-[11px] font-mono uppercase tracking-wider border-b-2 transition whitespace-nowrap ${activeTab === c.id ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}>
-                {c.nome}
-              </button>
-              {carteiras.length > 1 && (
+            <div key={c.id}
+              className={`relative group flex items-center transition-all ${dragOver === c.id ? 'border-l-2 border-blue-500' : ''}`}
+              draggable
+              onDragStart={e => handleDragStart(e, c.id)}
+              onDragOver={e => { e.preventDefault(); setDragOver(c.id) }}
+              onDragLeave={() => setDragOver(null)}
+              onDrop={e => handleDrop(e, c.id)}>
+              {renamingId === c.id ? (
+                <input autoFocus
+                  value={renameValue}
+                  onChange={e => setRenameValue(e.target.value)}
+                  onBlur={() => renameCarteira(c.id)}
+                  onKeyDown={e => { if (e.key === 'Enter') renameCarteira(c.id); if (e.key === 'Escape') setRenamingId(null) }}
+                  className="px-2 py-1 mx-1 text-[11px] font-mono bg-zinc-800 border border-zinc-600 rounded text-zinc-200 focus:outline-none w-28" />
+              ) : (
+                <button
+                  onClick={() => { setActiveTab(c.id); setEditingIdx(null) }}
+                  onDoubleClick={() => { setRenamingId(c.id); setRenameValue(c.nome) }}
+                  title="Clique duplo para renomear · Arraste para reordenar"
+                  className={`px-4 py-2.5 text-[11px] font-mono uppercase tracking-wider border-b-2 transition whitespace-nowrap cursor-grab active:cursor-grabbing ${activeTab === c.id
+                    ? (c.tipo === 'outros' ? 'border-blue-500 text-blue-400' : 'border-emerald-500 text-emerald-400')
+                    : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}>
+                  {c.tipo === 'outros' && <span className="mr-1 text-[9px] text-blue-600">◆</span>}
+                  {c.nome}
+                </button>
+              )}
+              {carteiras.length > 1 && renamingId !== c.id && (
                 <button onClick={() => removeCarteira(c.id)}
                   className="opacity-0 group-hover:opacity-100 p-0.5 text-zinc-600 hover:text-red-400 transition absolute -right-1 top-1">
                   <X size={9} />
@@ -1606,16 +1813,54 @@ function PortfolioPage({ user }) {
         </div>
       )}
 
-      {/* ADD CARTEIRA */}
+      {/* ADD CARTEIRA MODAL */}
       {showNewCarteira && (
-        <div className="px-6 py-3 border-b border-zinc-800 bg-zinc-900/50 flex items-center gap-3">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Nome da carteira:</span>
-          <input autoFocus type="text" placeholder="Ex: BC Growth" value={newCarteiraNome}
-            onChange={e => setNewCarteiraNome(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') addCarteira(); if (e.key === 'Escape') setShowNewCarteira(false) }}
-            className="px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded font-mono text-zinc-200 focus:border-blue-500/50 focus:outline-none w-48" />
-          <button onClick={addCarteira} className="px-3 py-1.5 text-[10px] font-mono uppercase bg-blue-600 hover:bg-blue-500 text-white rounded transition">Criar</button>
-          <button onClick={() => setShowNewCarteira(false)} className="text-[10px] font-mono text-zinc-500 hover:text-zinc-300 transition">Cancelar</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-80 shadow-xl">
+            <h3 className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 mb-4">Nova carteira</h3>
+            <input autoFocus type="text" placeholder="Nome da carteira" value={newCarteiraNome}
+              onChange={e => setNewCarteiraNome(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Escape') setShowNewCarteira(false) }}
+              className="w-full px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg font-mono text-zinc-200 focus:border-blue-500/50 focus:outline-none mb-4" />
+            <div className="mb-4">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-2">Tipo</p>
+              <div className="flex gap-2">
+                <button onClick={() => setNewCarteiraTipo('rv')}
+                  className={`flex-1 py-2 text-[11px] font-mono rounded-lg border transition ${newCarteiraTipo === 'rv' ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400' : 'border-zinc-700 text-zinc-500 hover:border-zinc-500'}`}>
+                  Renda Variável
+                </button>
+                <button onClick={() => setNewCarteiraTipo('outros')}
+                  className={`flex-1 py-2 text-[11px] font-mono rounded-lg border transition ${newCarteiraTipo === 'outros' ? 'border-blue-500/50 bg-blue-500/10 text-blue-400' : 'border-zinc-700 text-zinc-500 hover:border-zinc-500'}`}>
+                  Outros Ativos
+                </button>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => { setShowNewCarteira(false); setNewCarteiraNome(''); setNewCarteiraTipo('rv') }}
+                className="flex-1 px-3 py-2 text-[11px] font-mono text-zinc-500 border border-zinc-700 rounded-lg hover:bg-zinc-800 transition">Cancelar</button>
+              <button onClick={addCarteira}
+                className="flex-1 px-3 py-2 text-[11px] font-mono text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition">Criar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADD OUTRO ATIVO */}
+      {showAddOutro && activeCarteira?.tipo === 'outros' && (
+        <div className="px-6 py-3 border-b border-zinc-800 bg-zinc-900/50 flex items-center gap-3 flex-wrap">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Novo ativo:</span>
+          <input autoFocus type="text" placeholder="Nome do ativo" value={newOutroNome}
+            onChange={e => setNewOutroNome(e.target.value)}
+            className="px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded font-mono text-zinc-200 focus:border-blue-500/50 focus:outline-none w-40" />
+          <input type="text" placeholder="Quantidade" value={newOutroQtd}
+            onChange={e => setNewOutroQtd(e.target.value)}
+            className="px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded font-mono text-zinc-200 focus:border-blue-500/50 focus:outline-none w-28" />
+          <input type="text" placeholder="Valor atual (R$)" value={newOutroValor}
+            onChange={e => setNewOutroValor(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') addOutro(); if (e.key === 'Escape') setShowAddOutro(false) }}
+            className="px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded font-mono text-zinc-200 focus:border-blue-500/50 focus:outline-none w-36" />
+          <button onClick={addOutro} className="px-3 py-1.5 text-[10px] font-mono uppercase bg-blue-600 hover:bg-blue-500 text-white rounded transition">Adicionar</button>
+          <button onClick={() => setShowAddOutro(false)} className="text-[10px] font-mono text-zinc-500 hover:text-zinc-300 transition">Cancelar</button>
         </div>
       )}
 
@@ -1623,6 +1868,18 @@ function PortfolioPage({ user }) {
       <div className="px-6 py-6">
         {activeTab === 'geral'
           ? <VisaoGeral carteiras={carteiras} quotes={quotes} onNavigate={setActiveTab} ocultar={ocultar} />
+          : activeCarteira?.tipo === 'outros'
+            ? <OutrosAtivosTable
+                carteira={activeCarteira}
+                ocultar={ocultar}
+                editingIdx={editingOutroIdx}
+                editBuf={editOutroBuf}
+                onEditBuf={setEditOutroBuf}
+                onEdit={idx => { setEditingOutroIdx(idx); setEditOutroBuf({ quantidade: activeCarteira.outros[idx].quantidade, valorAtual: activeCarteira.outros[idx].valorAtual }) }}
+                onSave={outroId => saveEditOutro(activeTab, outroId)}
+                onCancel={() => setEditingOutroIdx(null)}
+                onRemove={outroId => removeOutro(activeTab, outroId)}
+              />
           : activeCarteira
             ? <CarteiraTable
                 ativos={activeCarteira.ativos}
