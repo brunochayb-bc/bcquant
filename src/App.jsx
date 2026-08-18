@@ -1350,7 +1350,7 @@ function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, 
           Nenhum ativo cadastrado
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className={categoryEntries.length > 1 ? "grid grid-cols-1 xl:grid-cols-2 gap-4" : "space-y-4"}>
           {categoryEntries.map(([catName, { items, total }]) => {
             const pctCart = totalValor > 0 ? (total / totalValor) * 100 : 0
             return (
@@ -1456,7 +1456,7 @@ function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, 
               </div>
             )
           })}
-          <div className="px-4 py-2 border border-zinc-800 rounded-xl bg-zinc-900/40 text-[10px] font-mono uppercase tracking-wider text-zinc-600">
+          <div className="xl:col-span-2 px-4 py-2 border border-zinc-800 rounded-xl bg-zinc-900/40 text-[10px] font-mono uppercase tracking-wider text-zinc-600">
             Valores atualizados manualmente · Clique no cabeçalho para ordenar · 📁 para mover categoria
           </div>
         </div>
