@@ -88,3 +88,12 @@ export async function loadOverviewAtivos(uid) {
   const snap = await getDoc(doc(db, 'overview', uid))
   return snap.exists() ? snap.data().ativos : []
 }
+
+export async function saveCarteiras(uid, carteiras) {
+  await setDoc(doc(db, 'carteiras', uid), { carteiras, updatedAt: new Date().toISOString() })
+}
+
+export async function loadCarteiras(uid) {
+  const snap = await getDoc(doc(db, 'carteiras', uid))
+  return snap.exists() ? (snap.data().carteiras || null) : null
+}

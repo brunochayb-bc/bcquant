@@ -15,6 +15,8 @@ import {
   onAuthChange,
   saveOverviewAtivos,
   loadOverviewAtivos,
+  saveCarteiras,
+  loadCarteiras,
   auth,
 } from './lib/firebase.js'
 
@@ -1750,6 +1752,10 @@ function PortfolioPage({ user }) {
     try { return JSON.parse(localStorage.getItem(PORTFOLIO_STORAGE_KEY)) || defaultCarteiras }
     catch { return defaultCarteiras }
   })
+  const [hydrated, setHydrated] = React.useState(false)
+  const [saveStatus, setSaveStatus] = React.useState('idle') // 'idle' | 'saving' | 'saved' | 'error'
+  const [lastSavedAt, setLastSavedAt] = React.useState(null)
+  const saveTimerRef = useRef(null)
   const [quotes, setQuotes]       = React.useState({})
   const [quotesTs, setQuotesTs]   = React.useState(null)
   const [loading, setLoading]     = React.useState(false)
@@ -1779,15 +1785,69 @@ function PortfolioPage({ user }) {
 
   const [saveError, setSaveError] = React.useState(null)
 
+  // Load inicial do Firestore + migração automática do localStorage
   useEffect(() => {
+    if (!user?.uid) return
+    let cancelled = false
+    setHydrated(false)
+    ;(async () => {
+      try {
+        const remote = await loadCarteiras(user.uid)
+        if (cancelled) return
+        if (remote && Array.isArray(remote) && remote.length > 0) {
+          // Firestore tem dados: usa como source of truth
+          setCarteiras(remote)
+          try { localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(remote)) } catch {}
+        } else {
+          // Firestore vazio: migra o que tiver em localStorage (ou default)
+          let local = null
+          try { local = JSON.parse(localStorage.getItem(PORTFOLIO_STORAGE_KEY)) } catch {}
+          const seed = (local && Array.isArray(local) && local.length > 0) ? local : defaultCarteiras
+          setCarteiras(seed)
+          try {
+            await saveCarteiras(user.uid, seed)
+            console.info('[BC.QUANT] Migração inicial concluída: carteiras enviadas ao Firestore')
+          } catch (e) {
+            console.error('[BC.QUANT] Falha na migração inicial:', e)
+          }
+        }
+      } catch (e) {
+        console.error('[BC.QUANT] Falha ao carregar carteiras do Firestore, usando cópia local:', e)
+        setSaveError('Offline · usando cópia local')
+      } finally {
+        if (!cancelled) setHydrated(true)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [user?.uid])
+
+  // Save: localStorage imediato + Firestore com debounce
+  useEffect(() => {
+    if (!hydrated || !user?.uid) return
+    // localStorage síncrono (fallback offline)
     try {
       localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(carteiras))
-      if (saveError) setSaveError(null)
     } catch (e) {
       console.error('[BC.QUANT] Falha ao salvar carteiras no localStorage:', e)
       setSaveError(e.message || 'Erro desconhecido')
     }
-  }, [carteiras])
+    // Firestore com debounce
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    setSaveStatus('saving')
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        await saveCarteiras(user.uid, carteiras)
+        setSaveStatus('saved')
+        setLastSavedAt(new Date())
+        if (saveError) setSaveError(null)
+      } catch (e) {
+        console.error('[BC.QUANT] Falha ao salvar no Firestore:', e)
+        setSaveStatus('error')
+        setSaveError('Falha ao sincronizar na nuvem · dados salvos localmente')
+      }
+    }, 800)
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }
+  }, [carteiras, hydrated, user?.uid])
 
   const allTickers = [...new Set(carteiras.flatMap(c => c.ativos.map(a => a.ticker)))]
 
@@ -1930,6 +1990,17 @@ function PortfolioPage({ user }) {
   const grandLiq   = grandRows.reduce((s, r) => s + r.liq, 0)
   const grandRes   = grandLiq - grandCusto
   const grandPct   = grandCusto > 0 ? (grandRes / grandCusto) * 100 : 0
+
+  if (!hydrated) {
+    return (
+      <div className="flex-1 flex items-center justify-center" style={{ background: '#111113' }}>
+        <div className="text-center">
+          <div className="inline-block w-8 h-8 border-2 border-zinc-700 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+          <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Carregando carteiras...</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 overflow-auto" style={{ background: '#111113' }}>
@@ -2164,7 +2235,14 @@ function PortfolioPage({ user }) {
       <footer className="px-6 py-4 border-t border-zinc-800/50">
         <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-zinc-600">
           <span>BC.QUANT · Portfólio · {new Date().toLocaleDateString('pt-BR')}</span>
-          <span>Dados salvos localmente · cotações {online ? 'ao vivo' : 'indisponíveis'}</span>
+          <span>
+            {!hydrated ? 'Carregando...'
+              : saveStatus === 'saving' ? 'Sincronizando...'
+              : saveStatus === 'error' ? '⚠ Offline · cópia local'
+              : saveStatus === 'saved' && lastSavedAt ? `✓ Sincronizado ${lastSavedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+              : 'Sincronizado na nuvem'}
+            {' · cotações '}{online ? 'ao vivo' : 'indisponíveis'}
+          </span>
         </div>
       </footer>
     </div>
