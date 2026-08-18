@@ -1777,8 +1777,16 @@ function PortfolioPage({ user }) {
   const [newAtivoPais, setNewAtivoPais]       = React.useState('BR')
   const [usdBrl, setUsdBrl]                   = React.useState(null)
 
+  const [saveError, setSaveError] = React.useState(null)
+
   useEffect(() => {
-    try { localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(carteiras)) } catch {}
+    try {
+      localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(carteiras))
+      if (saveError) setSaveError(null)
+    } catch (e) {
+      console.error('[BC.QUANT] Falha ao salvar carteiras no localStorage:', e)
+      setSaveError(e.message || 'Erro desconhecido')
+    }
   }, [carteiras])
 
   const allTickers = [...new Set(carteiras.flatMap(c => c.ativos.map(a => a.ticker)))]
@@ -2076,6 +2084,15 @@ function PortfolioPage({ user }) {
                 className="flex-1 px-3 py-2 text-[11px] font-mono text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition">Criar</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {saveError && (
+        <div className="px-6 py-2 border-b border-red-500/30 bg-red-500/10 flex items-center justify-between">
+          <span className="text-[11px] font-mono text-red-400">
+            ⚠ Falha ao salvar localmente: {saveError}
+          </span>
+          <button onClick={() => setSaveError(null)} className="text-[10px] font-mono text-red-400/70 hover:text-red-300 uppercase">Fechar</button>
         </div>
       )}
 
