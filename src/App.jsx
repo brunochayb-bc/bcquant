@@ -3,7 +3,7 @@ import {
   RotateCcw, FileSpreadsheet, X, ChevronLeft, ChevronRight,
   GitCompare, Search, AlertCircle, RefreshCw, Database, Clock,
   BarChart2, TrendingUp, TrendingDown, Home, Edit2, Check, Wifi, WifiOff,
-  Activity, Plus, Trash2, PenLine,
+  Activity, Plus, Trash2, PenLine, Folder,
 } from 'lucide-react'
 import {
   saveSnapshot,
@@ -1255,10 +1255,12 @@ function CarteiraTable({ ativos, quotes, onEdit, onRemove, editingIdx, editBuf, 
 // ============================================================
 // OUTROS ATIVOS TABLE
 // ============================================================
-function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, onEdit, onSave, onCancel, onRemove }) {
+function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, onEdit, onSave, onCancel, onRemove, onMoveCategoria }) {
   const [expandedHist, setExpandedHist] = React.useState(null)
   const [sortKey, setSortKey] = React.useState('nome')
   const [sortDir, setSortDir] = React.useState('asc')
+  const [moveTarget, setMoveTarget] = React.useState(null) // { id, nome, categoria }
+  const [moveCatInput, setMoveCatInput] = React.useState('')
   const masked = '••••••'
 
   const handleSort = (key) => {
@@ -1280,7 +1282,9 @@ function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, 
     return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   }
 
-  const sorted = [...(carteira.outros || [])].sort((a, b) => {
+  const all = carteira.outros || []
+
+  const sorted = [...all].sort((a, b) => {
     let av, bv
     if (sortKey === 'nome') {
       av = (a.nome || '').toLowerCase()
@@ -1303,14 +1307,37 @@ function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, 
     return sortDir === 'asc' ? av - bv : bv - av
   })
 
-  const totalValor = (carteira.outros || []).reduce((s, o) => s + (o.valorAtual || 0), 0)
+  // Agrupa por categoria e ordena categorias por valor total desc
+  const grouped = new Map()
+  sorted.forEach(o => {
+    const cat = o.categoria || 'Fundos'
+    if (!grouped.has(cat)) grouped.set(cat, { items: [], total: 0 })
+    const g = grouped.get(cat)
+    g.items.push(o)
+    g.total += (o.valorAtual || 0)
+  })
+  const categoryEntries = [...grouped.entries()].sort((a, b) => b[1].total - a[1].total)
+
+  const totalValor = all.reduce((s, o) => s + (o.valorAtual || 0), 0)
+  const existingCats = Array.from(new Set(all.map(o => o.categoria || 'Fundos'))).sort()
+
+  const openMove = (o) => {
+    setMoveTarget({ id: o.id, nome: o.nome, categoria: o.categoria || 'Fundos' })
+    setMoveCatInput(o.categoria || 'Fundos')
+  }
+  const closeMove = () => { setMoveTarget(null); setMoveCatInput('') }
+  const confirmMove = () => {
+    if (!moveTarget) return
+    onMoveCategoria(moveTarget.id, moveCatInput)
+    closeMove()
+  }
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500">{carteira.nome}</h3>
-          <p className="text-[10px] font-mono text-zinc-700 mt-0.5">{(carteira.outros||[]).length} ativo{(carteira.outros||[]).length !== 1 ? 's' : ''}</p>
+          <p className="text-[10px] font-mono text-zinc-700 mt-0.5">{all.length} ativo{all.length !== 1 ? 's' : ''} · {categoryEntries.length} categoria{categoryEntries.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="text-right">
           <div className="text-[9px] font-mono uppercase text-zinc-600 mb-0.5">Valor Total</div>
@@ -1323,96 +1350,142 @@ function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, 
           Nenhum ativo cadastrado
         </div>
       ) : (
-        <div className="border border-zinc-800 rounded-xl overflow-hidden">
-          <table className="w-full text-xs font-mono">
-            <thead>
-              <tr className="border-b border-zinc-800 bg-zinc-900/50">
-                <ThS k="nome" align="left">Ativo</ThS>
-                <ThS k="quantidade">Quantidade</ThS>
-                <ThS k="valorAtual">Valor Atual</ThS>
-                <ThS k="atualizadoEm">Atualizado</ThS>
-                <th className="px-4 py-2.5 text-right text-[10px] uppercase tracking-wider text-zinc-500">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((o, idx) => {
-                const realIdx = (carteira.outros||[]).findIndex(x => x.id === o.id)
-                const hist = o.historico || []
-                const varPct = hist.length >= 2
-                  ? ((hist[hist.length-1].valor - hist[hist.length-2].valor) / hist[hist.length-2].valor) * 100
-                  : null
-                return (
-                  <React.Fragment key={o.id}>
-                    <tr className="border-b border-zinc-800/50 hover:bg-zinc-900/30 transition">
-                      <td className="px-4 py-3">
-                        <div className="text-zinc-200 font-semibold">{o.nome}</div>
-                        {varPct !== null && (
-                          <div className={`text-[10px] mt-0.5 ${varPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {varPct >= 0 ? '▲' : '▼'} {Math.abs(varPct).toFixed(2)}% desde última atualização
-                          </div>
-                        )}
-                      </td>
-                      {editingIdx === realIdx ? (
-                        <>
-                          <td className="px-4 py-2">
-                            <input type="text" value={editBuf.quantidade ?? ''}
-                              onChange={e => onEditBuf(b => ({ ...b, quantidade: e.target.value }))}
-                              className="w-24 px-2 py-1 text-xs bg-zinc-800 border border-zinc-600 rounded font-mono text-zinc-200 focus:outline-none text-right" />
-                          </td>
-                          <td className="px-4 py-2">
-                            <input type="text" value={editBuf.valorAtual ?? ''}
-                              onChange={e => onEditBuf(b => ({ ...b, valorAtual: e.target.value }))}
-                              onKeyDown={e => { if (e.key === 'Enter') onSave(o.id); if (e.key === 'Escape') onCancel() }}
-                              className="w-32 px-2 py-1 text-xs bg-zinc-800 border border-zinc-600 rounded font-mono text-zinc-200 focus:outline-none text-right" />
-                          </td>
-                          <td className="px-4 py-2 text-zinc-600 text-[10px]">agora</td>
-                          <td className="px-4 py-2 text-right">
-                            <button onClick={() => onSave(o.id)} className="text-emerald-400 hover:text-emerald-300 mr-2"><Check size={12} /></button>
-                            <button onClick={onCancel} className="text-zinc-500 hover:text-zinc-300"><X size={12} /></button>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="px-4 py-3 text-right text-zinc-400">{o.quantidade ?? '—'}</td>
-                          <td className="px-4 py-3 text-right text-blue-400 font-semibold">{ocultar ? masked : fmtMoneyFull(o.valorAtual || 0)}</td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="text-[10px] text-zinc-600">{fmtDate(o.atualizadoEm)}</div>
-                            {hist.length > 1 && (
-                              <button onClick={() => setExpandedHist(expandedHist === o.id ? null : o.id)}
-                                className="text-[10px] text-zinc-700 hover:text-zinc-400 transition mt-0.5">
-                                {expandedHist === o.id ? '▲ ocultar' : `▼ ${hist.length} registros`}
-                              </button>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <button onClick={() => onEdit(realIdx)} className="text-zinc-500 hover:text-zinc-300 mr-2"><Edit2 size={11} /></button>
-                            <button onClick={() => onRemove(o.id)} className="text-zinc-600 hover:text-red-400"><X size={11} /></button>
-                          </td>
-                        </>
-                      )}
+        <div className="space-y-4">
+          {categoryEntries.map(([catName, { items, total }]) => {
+            const pctCart = totalValor > 0 ? (total / totalValor) * 100 : 0
+            return (
+              <div key={catName} className="border border-zinc-800 rounded-xl overflow-hidden">
+                <div className="px-4 py-2.5 bg-zinc-900/60 border-b border-zinc-800 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Folder size={12} className="text-blue-400/70" />
+                    <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-300 font-semibold">{catName}</span>
+                    <span className="text-[9px] font-mono text-zinc-600">{items.length} ativo{items.length !== 1 ? 's' : ''} · {pctCart.toFixed(1)}% da carteira</span>
+                  </div>
+                  <span className="text-[12px] font-mono text-blue-400 font-semibold">
+                    {ocultar ? masked : fmtMoneyFull(total)}
+                  </span>
+                </div>
+                <table className="w-full text-xs font-mono">
+                  <thead>
+                    <tr className="border-b border-zinc-800 bg-zinc-900/30">
+                      <ThS k="nome" align="left">Ativo</ThS>
+                      <ThS k="quantidade">Quantidade</ThS>
+                      <ThS k="valorAtual">Valor Atual</ThS>
+                      <ThS k="atualizadoEm">Atualizado</ThS>
+                      <th className="px-4 py-2.5 text-right text-[10px] uppercase tracking-wider text-zinc-500">Ações</th>
                     </tr>
-                    {expandedHist === o.id && hist.length > 0 && (
-                      <tr className="bg-zinc-900/50">
-                        <td colSpan={5} className="px-6 py-3">
-                          <div className="text-[9px] font-mono uppercase text-zinc-600 mb-2">Histórico de valores</div>
-                          <div className="space-y-1">
-                            {[...hist].reverse().map((h, hi) => (
-                              <div key={hi} className="flex items-center justify-between text-[11px] font-mono">
-                                <span className="text-zinc-600">{fmtDate(h.data)}</span>
-                                <span className="text-zinc-300">{fmtMoneyFull(h.valor)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                )
-              })}
-            </tbody>
-          </table>
-          <div className="px-4 py-2 border-t border-zinc-800 bg-zinc-900/40 text-[10px] font-mono uppercase tracking-wider text-zinc-600">
-            Valores atualizados manualmente · Clique no cabeçalho para ordenar
+                  </thead>
+                  <tbody>
+                    {items.map((o) => {
+                      const realIdx = all.findIndex(x => x.id === o.id)
+                      const hist = o.historico || []
+                      const varPct = hist.length >= 2
+                        ? ((hist[hist.length-1].valor - hist[hist.length-2].valor) / hist[hist.length-2].valor) * 100
+                        : null
+                      return (
+                        <React.Fragment key={o.id}>
+                          <tr className="border-b border-zinc-800/50 hover:bg-zinc-900/30 transition last:border-b-0">
+                            <td className="px-4 py-3">
+                              <div className="text-zinc-200 font-semibold">{o.nome}</div>
+                              {varPct !== null && (
+                                <div className={`text-[10px] mt-0.5 ${varPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                  {varPct >= 0 ? '▲' : '▼'} {Math.abs(varPct).toFixed(2)}% desde última atualização
+                                </div>
+                              )}
+                            </td>
+                            {editingIdx === realIdx ? (
+                              <>
+                                <td className="px-4 py-2">
+                                  <input type="text" value={editBuf.quantidade ?? ''}
+                                    onChange={e => onEditBuf(b => ({ ...b, quantidade: e.target.value }))}
+                                    className="w-24 px-2 py-1 text-xs bg-zinc-800 border border-zinc-600 rounded font-mono text-zinc-200 focus:outline-none text-right" />
+                                </td>
+                                <td className="px-4 py-2">
+                                  <input type="text" value={editBuf.valorAtual ?? ''}
+                                    onChange={e => onEditBuf(b => ({ ...b, valorAtual: e.target.value }))}
+                                    onKeyDown={e => { if (e.key === 'Enter') onSave(o.id); if (e.key === 'Escape') onCancel() }}
+                                    className="w-32 px-2 py-1 text-xs bg-zinc-800 border border-zinc-600 rounded font-mono text-zinc-200 focus:outline-none text-right" />
+                                </td>
+                                <td className="px-4 py-2 text-zinc-600 text-[10px]">agora</td>
+                                <td className="px-4 py-2 text-right">
+                                  <button onClick={() => onSave(o.id)} className="text-emerald-400 hover:text-emerald-300 mr-2"><Check size={12} /></button>
+                                  <button onClick={onCancel} className="text-zinc-500 hover:text-zinc-300"><X size={12} /></button>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="px-4 py-3 text-right text-zinc-400">{o.quantidade ?? '—'}</td>
+                                <td className="px-4 py-3 text-right text-blue-400 font-semibold">{ocultar ? masked : fmtMoneyFull(o.valorAtual || 0)}</td>
+                                <td className="px-4 py-3 text-right">
+                                  <div className="text-[10px] text-zinc-600">{fmtDate(o.atualizadoEm)}</div>
+                                  {hist.length > 1 && (
+                                    <button onClick={() => setExpandedHist(expandedHist === o.id ? null : o.id)}
+                                      className="text-[10px] text-zinc-700 hover:text-zinc-400 transition mt-0.5">
+                                      {expandedHist === o.id ? '▲ ocultar' : `▼ ${hist.length} registros`}
+                                    </button>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-right whitespace-nowrap">
+                                  <button onClick={() => openMove(o)} title="Mover categoria" className="text-zinc-600 hover:text-blue-400 mr-2 transition"><Folder size={11} /></button>
+                                  <button onClick={() => onEdit(realIdx)} title="Editar" className="text-zinc-500 hover:text-zinc-300 mr-2"><Edit2 size={11} /></button>
+                                  <button onClick={() => onRemove(o.id)} title="Remover" className="text-zinc-600 hover:text-red-400"><X size={11} /></button>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                          {expandedHist === o.id && hist.length > 0 && (
+                            <tr className="bg-zinc-900/50">
+                              <td colSpan={5} className="px-6 py-3">
+                                <div className="text-[9px] font-mono uppercase text-zinc-600 mb-2">Histórico de valores</div>
+                                <div className="space-y-1">
+                                  {[...hist].reverse().map((h, hi) => (
+                                    <div key={hi} className="flex items-center justify-between text-[11px] font-mono">
+                                      <span className="text-zinc-600">{fmtDate(h.data)}</span>
+                                      <span className="text-zinc-300">{fmtMoneyFull(h.valor)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
+          })}
+          <div className="px-4 py-2 border border-zinc-800 rounded-xl bg-zinc-900/40 text-[10px] font-mono uppercase tracking-wider text-zinc-600">
+            Valores atualizados manualmente · Clique no cabeçalho para ordenar · 📁 para mover categoria
+          </div>
+        </div>
+      )}
+
+      {moveTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={closeMove}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-80" onClick={e => e.stopPropagation()}>
+            <h3 className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 mb-1">Mover categoria</h3>
+            <p className="text-sm font-bold font-mono text-zinc-100 mb-4">{moveTarget.nome}</p>
+            <label className="text-[10px] font-mono uppercase text-zinc-500 mb-1 block">Nova categoria</label>
+            <input autoFocus type="text" value={moveCatInput}
+              onChange={e => setMoveCatInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') confirmMove(); if (e.key === 'Escape') closeMove() }}
+              list="outro-categorias-move"
+              placeholder="Ex: Renda Fixa"
+              className="w-full px-3 py-2 text-sm font-mono bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:border-blue-500/50 focus:outline-none mb-2" />
+            <datalist id="outro-categorias-move">
+              {existingCats.map(c => <option key={c} value={c} />)}
+              {!existingCats.includes('Fundos') && <option value="Fundos" />}
+              {!existingCats.includes('Renda Fixa') && <option value="Renda Fixa" />}
+            </datalist>
+            <p className="text-[9px] font-mono text-zinc-600 mb-4">Atual: {moveTarget.categoria}</p>
+            <div className="flex gap-2">
+              <button onClick={closeMove}
+                className="flex-1 px-3 py-2 text-[11px] font-mono text-zinc-500 border border-zinc-700 rounded-lg hover:bg-zinc-800 transition">Cancelar</button>
+              <button onClick={confirmMove}
+                className="flex-1 px-3 py-2 text-[11px] font-mono text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition">Mover</button>
+            </div>
           </div>
         </div>
       )}
@@ -1698,6 +1771,7 @@ function PortfolioPage({ user }) {
   const [newOutroNome, setNewOutroNome]       = React.useState('')
   const [newOutroQtd, setNewOutroQtd]         = React.useState('')
   const [newOutroValor, setNewOutroValor]     = React.useState('')
+  const [newOutroCategoria, setNewOutroCategoria] = React.useState('')
   const [editingOutroIdx, setEditingOutroIdx] = React.useState(null)
   const [editOutroBuf, setEditOutroBuf]       = React.useState({})
   const [newAtivoPais, setNewAtivoPais]       = React.useState('BR')
@@ -1794,22 +1868,29 @@ function PortfolioPage({ user }) {
   // Outros ativos helpers
   const addOutro = () => {
     const nome  = newOutroNome.trim()
+    const cat   = newOutroCategoria.trim() || 'Fundos'
     const qtd   = parseFloat(String(newOutroQtd).replace(',', '.')) || 0
     const valor = parseFloat(String(newOutroValor).replace(',', '.')) || 0
     if (!nome) return
     const agora = new Date().toISOString()
     setCarteiras(prev => prev.map(c => c.id === activeTab
       ? { ...c, outros: [...(c.outros || []), {
-          id: Date.now(), nome, quantidade: qtd, valorAtual: valor,
+          id: Date.now(), nome, categoria: cat, quantidade: qtd, valorAtual: valor,
           atualizadoEm: agora,
           historico: valor > 0 ? [{ data: agora, valor }] : []
         }] }
       : c))
-    setNewOutroNome(''); setNewOutroQtd(''); setNewOutroValor(''); setShowAddOutro(false)
+    setNewOutroNome(''); setNewOutroQtd(''); setNewOutroValor(''); setNewOutroCategoria(''); setShowAddOutro(false)
   }
   const removeOutro = (carteiraId, outroId) => {
     setCarteiras(prev => prev.map(c => c.id === carteiraId
       ? { ...c, outros: (c.outros || []).filter(o => o.id !== outroId) }
+      : c))
+  }
+  const moveOutroCategoria = (carteiraId, outroId, novaCategoria) => {
+    const cat = (novaCategoria || '').trim() || 'Fundos'
+    setCarteiras(prev => prev.map(c => c.id === carteiraId
+      ? { ...c, outros: (c.outros || []).map(o => o.id === outroId ? { ...o, categoria: cat } : o) }
       : c))
   }
   const saveEditOutro = (carteiraId, outroId) => {
@@ -1999,12 +2080,23 @@ function PortfolioPage({ user }) {
       )}
 
       {/* ADD OUTRO ATIVO */}
-      {showAddOutro && activeCarteira?.tipo === 'outros' && (
+      {showAddOutro && activeCarteira?.tipo === 'outros' && (() => {
+        const existingCats = Array.from(new Set((activeCarteira.outros || []).map(o => o.categoria || 'Fundos'))).sort()
+        return (
         <div className="px-6 py-3 border-b border-zinc-800 bg-zinc-900/50 flex items-center gap-3 flex-wrap">
           <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Novo ativo:</span>
           <input autoFocus type="text" placeholder="Nome do ativo" value={newOutroNome}
             onChange={e => setNewOutroNome(e.target.value)}
             className="px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded font-mono text-zinc-200 focus:border-blue-500/50 focus:outline-none w-40" />
+          <input type="text" placeholder="Categoria" value={newOutroCategoria}
+            onChange={e => setNewOutroCategoria(e.target.value)}
+            list="outro-categorias-add"
+            className="px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded font-mono text-zinc-200 focus:border-blue-500/50 focus:outline-none w-36" />
+          <datalist id="outro-categorias-add">
+            {existingCats.map(c => <option key={c} value={c} />)}
+            {!existingCats.includes('Fundos') && <option value="Fundos" />}
+            {!existingCats.includes('Renda Fixa') && <option value="Renda Fixa" />}
+          </datalist>
           <input type="text" placeholder="Quantidade" value={newOutroQtd}
             onChange={e => setNewOutroQtd(e.target.value)}
             className="px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded font-mono text-zinc-200 focus:border-blue-500/50 focus:outline-none w-28" />
@@ -2015,7 +2107,8 @@ function PortfolioPage({ user }) {
           <button onClick={addOutro} className="px-3 py-1.5 text-[10px] font-mono uppercase bg-blue-600 hover:bg-blue-500 text-white rounded transition">Adicionar</button>
           <button onClick={() => setShowAddOutro(false)} className="text-[10px] font-mono text-zinc-500 hover:text-zinc-300 transition">Cancelar</button>
         </div>
-      )}
+        )
+      })()}
 
       {/* CONTENT */}
       <div className="px-6 py-6">
@@ -2032,6 +2125,7 @@ function PortfolioPage({ user }) {
                 onSave={outroId => saveEditOutro(activeTab, outroId)}
                 onCancel={() => setEditingOutroIdx(null)}
                 onRemove={outroId => removeOutro(activeTab, outroId)}
+                onMoveCategoria={(outroId, novaCat) => moveOutroCategoria(activeTab, outroId, novaCat)}
               />
           : activeCarteira
             ? <CarteiraTable
