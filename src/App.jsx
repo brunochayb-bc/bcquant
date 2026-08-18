@@ -1255,9 +1255,24 @@ function CarteiraTable({ ativos, quotes, onEdit, onRemove, editingIdx, editBuf, 
 // ============================================================
 // OUTROS ATIVOS TABLE
 // ============================================================
-function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, onEdit, onSave, onCancel, onRemove, sortMode, onSortMode }) {
+function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, onEdit, onSave, onCancel, onRemove }) {
   const [expandedHist, setExpandedHist] = React.useState(null)
+  const [sortKey, setSortKey] = React.useState('nome')
+  const [sortDir, setSortDir] = React.useState('asc')
   const masked = '••••••'
+
+  const handleSort = (key) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
+  const sortIcon = (key) => sortKey !== key ? ' ↕' : sortDir === 'asc' ? ' ↑' : ' ↓'
+
+  const ThS = ({ k, children, align = 'right' }) => (
+    <th onClick={() => handleSort(k)}
+      className={`px-4 py-2.5 text-${align} text-[10px] uppercase tracking-wider cursor-pointer select-none transition hover:text-zinc-200 whitespace-nowrap ${sortKey === k ? 'text-blue-400' : 'text-zinc-500'}`}>
+      {children}{sortIcon(k)}
+    </th>
+  )
 
   const fmtDate = (iso) => {
     if (!iso) return '—'
@@ -1266,9 +1281,26 @@ function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, 
   }
 
   const sorted = [...(carteira.outros || [])].sort((a, b) => {
-    if (sortMode === 'az') return a.nome.localeCompare(b.nome)
-    if (sortMode === 'valor') return (b.valorAtual || 0) - (a.valorAtual || 0)
-    return 0
+    let av, bv
+    if (sortKey === 'nome') {
+      av = (a.nome || '').toLowerCase()
+      bv = (b.nome || '').toLowerCase()
+      const cmp = av.localeCompare(bv)
+      return sortDir === 'asc' ? cmp : -cmp
+    }
+    if (sortKey === 'quantidade') {
+      av = Number(a.quantidade); if (isNaN(av)) av = -Infinity
+      bv = Number(b.quantidade); if (isNaN(bv)) bv = -Infinity
+    } else if (sortKey === 'valorAtual') {
+      av = a.valorAtual ?? -Infinity
+      bv = b.valorAtual ?? -Infinity
+    } else if (sortKey === 'atualizadoEm') {
+      av = a.atualizadoEm ? new Date(a.atualizadoEm).getTime() : -Infinity
+      bv = b.atualizadoEm ? new Date(b.atualizadoEm).getTime() : -Infinity
+    } else {
+      return 0
+    }
+    return sortDir === 'asc' ? av - bv : bv - av
   })
 
   const totalValor = (carteira.outros || []).reduce((s, o) => s + (o.valorAtual || 0), 0)
@@ -1280,18 +1312,9 @@ function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, 
           <h3 className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500">{carteira.nome}</h3>
           <p className="text-[10px] font-mono text-zinc-700 mt-0.5">{(carteira.outros||[]).length} ativo{(carteira.outros||[]).length !== 1 ? 's' : ''}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            <span className="text-[9px] font-mono text-zinc-600 mr-1">Ordenar:</span>
-            <button onClick={() => onSortMode(sortMode === 'az' ? 'none' : 'az')}
-              className={`px-2 py-1 text-[10px] font-mono rounded border transition ${sortMode === 'az' ? 'border-blue-500/50 text-blue-400 bg-blue-500/10' : 'border-zinc-700 text-zinc-500 hover:border-zinc-500'}`}>A→Z</button>
-            <button onClick={() => onSortMode(sortMode === 'valor' ? 'none' : 'valor')}
-              className={`px-2 py-1 text-[10px] font-mono rounded border transition ${sortMode === 'valor' ? 'border-blue-500/50 text-blue-400 bg-blue-500/10' : 'border-zinc-700 text-zinc-500 hover:border-zinc-500'}`}>Valor ↓</button>
-          </div>
-          <div className="text-right">
-            <div className="text-[9px] font-mono uppercase text-zinc-600 mb-0.5">Valor Total</div>
-            <div className="text-xl font-bold font-mono text-blue-400">{ocultar ? masked : fmtMoneyFull(totalValor)}</div>
-          </div>
+        <div className="text-right">
+          <div className="text-[9px] font-mono uppercase text-zinc-600 mb-0.5">Valor Total</div>
+          <div className="text-xl font-bold font-mono text-blue-400">{ocultar ? masked : fmtMoneyFull(totalValor)}</div>
         </div>
       </div>
 
@@ -1304,10 +1327,10 @@ function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, 
           <table className="w-full text-xs font-mono">
             <thead>
               <tr className="border-b border-zinc-800 bg-zinc-900/50">
-                <th className="px-4 py-2.5 text-left text-[10px] uppercase tracking-wider text-zinc-500">Ativo</th>
-                <th className="px-4 py-2.5 text-right text-[10px] uppercase tracking-wider text-zinc-500">Quantidade</th>
-                <th className="px-4 py-2.5 text-right text-[10px] uppercase tracking-wider text-zinc-500">Valor Atual</th>
-                <th className="px-4 py-2.5 text-right text-[10px] uppercase tracking-wider text-zinc-500">Atualizado</th>
+                <ThS k="nome" align="left">Ativo</ThS>
+                <ThS k="quantidade">Quantidade</ThS>
+                <ThS k="valorAtual">Valor Atual</ThS>
+                <ThS k="atualizadoEm">Atualizado</ThS>
                 <th className="px-4 py-2.5 text-right text-[10px] uppercase tracking-wider text-zinc-500">Ações</th>
               </tr>
             </thead>
@@ -1388,6 +1411,9 @@ function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, 
               })}
             </tbody>
           </table>
+          <div className="px-4 py-2 border-t border-zinc-800 bg-zinc-900/40 text-[10px] font-mono uppercase tracking-wider text-zinc-600">
+            Valores atualizados manualmente · Clique no cabeçalho para ordenar
+          </div>
         </div>
       )}
     </div>
@@ -1675,7 +1701,6 @@ function PortfolioPage({ user }) {
   const [editingOutroIdx, setEditingOutroIdx] = React.useState(null)
   const [editOutroBuf, setEditOutroBuf]       = React.useState({})
   const [newAtivoPais, setNewAtivoPais]       = React.useState('BR')
-  const [outrosSort, setOutrosSort]           = React.useState('none') // 'az' | 'valor' | 'none'
   const [usdBrl, setUsdBrl]                   = React.useState(null)
 
   useEffect(() => {
@@ -2007,8 +2032,6 @@ function PortfolioPage({ user }) {
                 onSave={outroId => saveEditOutro(activeTab, outroId)}
                 onCancel={() => setEditingOutroIdx(null)}
                 onRemove={outroId => removeOutro(activeTab, outroId)}
-                sortMode={outrosSort}
-                onSortMode={setOutrosSort}
               />
           : activeCarteira
             ? <CarteiraTable
