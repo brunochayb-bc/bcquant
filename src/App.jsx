@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import HiloTab from './components/HiloTab';
 import {
   RotateCcw, FileSpreadsheet, X, ChevronLeft, ChevronRight,
   GitCompare, Search, AlertCircle, RefreshCw, Database, Clock,
@@ -2736,6 +2737,7 @@ const NAV_ITEMS = [
   { id: 'overview',  label: 'Overview',          icon: Activity },
   { id: 'screening', label: 'Screening Graham', icon: BarChart2 },
   { id: 'portfolio', label: 'Portfólio',         icon: TrendingUp },
+    { id: 'hilo',      label: 'Hi-Lo',           icon: Activity      },
 ]
 
 export default function App() {
@@ -2830,6 +2832,7 @@ export default function App() {
         {page === 'overview'  && <OverviewPage user={user} onOpenTicker={openTicker} />}
         {page === 'screening' && <ScreeningPage />}
         {page === 'portfolio' && <PortfolioPage user={user} />}
+        {page === 'hilo'      && <HiloTab uid={user?.uid} />}
             {page === 'ticker'    && selectedTicker && <TickerPage ticker={selectedTicker} onBack={() => setPage('overview')} />}
       </main>
     </div>

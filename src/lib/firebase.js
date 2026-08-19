@@ -97,3 +97,12 @@ export async function loadCarteiras(uid) {
   const snap = await getDoc(doc(db, 'carteiras', uid))
   return snap.exists() ? (snap.data().carteiras || null) : null
 }
+
+export async function saveHiloWatchlist(uid, tickers) {
+  await setDoc(doc(db, 'hilo', uid), { tickers, updatedAt: new Date().toISOString() })
+}
+
+export async function loadHiloWatchlist(uid) {
+  const snap = await getDoc(doc(db, 'hilo', uid))
+  return snap.exists() ? (snap.data().tickers || []) : []
+}
