@@ -106,3 +106,12 @@ export async function loadHiloWatchlist(uid) {
   const snap = await getDoc(doc(db, 'hilo', uid))
   return snap.exists() ? (snap.data().tickers || []) : []
 }
+
+export async function saveOptionsData(uid, data) {
+  await setDoc(doc(db, 'options', uid), { ...data, updatedAt: new Date().toISOString() })
+}
+
+export async function loadOptionsData(uid) {
+  const snap = await getDoc(doc(db, 'options', uid))
+  return snap.exists() ? snap.data() : null
+}

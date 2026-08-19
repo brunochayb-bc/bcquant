@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import HiloTab from './components/HiloTab';
-import OptionsTab from './components/OptionsTab';
 import {
   RotateCcw, FileSpreadsheet, X, ChevronLeft, ChevronRight,
   GitCompare, Search, AlertCircle, RefreshCw, Database, Clock,
@@ -2739,7 +2738,6 @@ const NAV_ITEMS = [
   { id: 'screening', label: 'Screening Graham', icon: BarChart2 },
   { id: 'portfolio', label: 'Portfólio',         icon: TrendingUp },
     { id: 'hilo',      label: 'Hi-Lo',           icon: Activity      },
-    { id: 'opcoes',    label: 'Opções',          icon: TrendingUp    },
 ]
 
 export default function App() {
@@ -2835,7 +2833,6 @@ export default function App() {
         {page === 'screening' && <ScreeningPage />}
         {page === 'portfolio' && <PortfolioPage user={user} />}
         {page === 'hilo'      && <HiloTab uid={user?.uid} />}
-        {page === 'opcoes'    && <OptionsTab uid={user?.uid} />}
             {page === 'ticker'    && selectedTicker && <TickerPage ticker={selectedTicker} onBack={() => setPage('overview')} />}
       </main>
     </div>
