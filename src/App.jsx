@@ -1286,6 +1286,19 @@ function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, 
 
   const all = carteira.outros || []
 
+  const calcVariacao = (items) => {
+    let atual = 0, anterior = 0
+    items.forEach(o => {
+      const hist = o.historico || []
+      const va = o.valorAtual || 0
+      atual += va
+      anterior += hist.length >= 2 ? hist[hist.length - 2].valor : va
+    })
+    if (anterior === 0) return null
+    return ((atual - anterior) / anterior) * 100
+  }
+
+
   const sorted = [...all].sort((a, b) => {
     let av, bv
     if (sortKey === 'nome') {
@@ -1344,6 +1357,15 @@ function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, 
         <div className="text-right">
           <div className="text-[9px] font-mono uppercase text-zinc-600 mb-0.5">Valor Total</div>
           <div className="text-xl font-bold font-mono text-blue-400">{ocultar ? masked : fmtMoneyFull(totalValor)}</div>
+          {(() => {
+            const v = calcVariacao(all)
+            if (v === null || ocultar) return null
+            return (
+              <div className={`text-[10px] font-mono mt-0.5 ${v >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {v >= 0 ? '▲' : '▼'} {Math.abs(v).toFixed(2)}% desde última atualização
+              </div>
+            )
+          })()}
         </div>
       </div>
 
@@ -1363,9 +1385,20 @@ function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, 
                     <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-300 font-semibold">{catName}</span>
                     <span className="text-[9px] font-mono text-zinc-600">{items.length} ativo{items.length !== 1 ? 's' : ''} · {pctCart.toFixed(1)}% da carteira</span>
                   </div>
-                  <span className="text-[12px] font-mono text-blue-400 font-semibold">
-                    {ocultar ? masked : fmtMoneyFull(total)}
-                  </span>
+                  <div className="text-right">
+                    <div className="text-[12px] font-mono text-blue-400 font-semibold">
+                      {ocultar ? masked : fmtMoneyFull(total)}
+                    </div>
+                    {(() => {
+                      const v = calcVariacao(items)
+                      if (v === null || ocultar) return null
+                      return (
+                        <div className={`text-[9px] font-mono mt-0.5 ${v >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {v >= 0 ? '▲' : '▼'} {Math.abs(v).toFixed(2)}%
+                        </div>
+                      )
+                    })()}
+                  </div>
                 </div>
                 <table className="w-full text-xs font-mono">
                   <thead>
