@@ -1530,20 +1530,7 @@ function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, 
   )
 }
 
-function VisaoGeral({ carteiras, quotes, onNavigate, ocultar, user }) {
-  const [opcoesPainel, setOpcoesPainel] = React.useState(null)
-  React.useEffect(() => {
-    if (!user?.uid) return
-    Promise.all([
-      import('./lib/firebase'),
-      import('./lib/optionsCalc')
-    ]).then(([fb, calc]) => {
-      return fb.loadOptionsData(user.uid).then(data => {
-        if (data) setOpcoesPainel(calc.computePainel(data.operacoes || [], data.aporte))
-      })
-    }).catch(err => console.warn('Opções não carregadas na Visão Geral:', err))
-  }, [user?.uid])
-
+function VisaoGeral({ carteiras, quotes, onNavigate, ocultar }) {
   const carteiraStats = carteiras.map(c => {
     if (c.tipo === 'outros') {
       const totalValor = (c.outros || []).reduce((s, o) => s + (o.valorAtual || 0), 0)
@@ -1572,8 +1559,7 @@ function VisaoGeral({ carteiras, quotes, onNavigate, ocultar, user }) {
   const grandPct    = grandCusto > 0 ? (grandRes / grandCusto) * 100 : 0
   // Total patrimônio = RV + Outros
   const outrosTotal = carteiraStats.filter(c => c.isOutros).reduce((s, c) => s + c.totalLiq, 0)
-  const opcoesLiquidacao = opcoesPainel?.liquidacaoAberta || 0
-  const patrimonioTotal = grandLiq + outrosTotal + opcoesLiquidacao
+  const patrimonioTotal = grandLiq + outrosTotal
   const totalAtivos = carteiras.reduce((s, c) => s + (c.tipo === 'outros' ? (c.outros||[]).length : c.ativos.length), 0)
   const isGain      = grandRes >= 0
 
@@ -1627,16 +1613,6 @@ function VisaoGeral({ carteiras, quotes, onNavigate, ocultar, user }) {
                 <div>
                   <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Outros ativos</div>
                   <div className="text-xl font-mono text-blue-400">{ocultar ? masked : fmtMoneyFull(outrosTotal)}</div>
-                </div>
-              </>
-            )}
-            {/* Opções (mercado — liquidação das abertas) */}
-            {opcoesLiquidacao > 0 && (
-              <>
-                <div className="w-px h-12 bg-zinc-800 hidden md:block" />
-                <div>
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-1">Opções (mercado)</div>
-                  <div className="text-xl font-mono text-amber-400">{ocultar ? masked : fmtMoneyFull(opcoesLiquidacao)}</div>
                 </div>
               </>
             )}
@@ -2264,7 +2240,7 @@ function PortfolioPage({ user }) {
       {/* CONTENT */}
       <div className="px-6 py-6">
         {activeTab === 'geral'
-          ? <VisaoGeral carteiras={carteiras} quotes={quotes} onNavigate={setActiveTab} ocultar={ocultar} user={user} />
+          ? <VisaoGeral carteiras={carteiras} quotes={quotes} onNavigate={setActiveTab} ocultar={ocultar} />
           : activeTab === 'opcoes'
           ? <OptionsTab uid={user?.uid} />
           : activeCarteira?.tipo === 'outros'
