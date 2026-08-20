@@ -1733,6 +1733,52 @@ function VisaoGeral({ carteiras, quotes, onNavigate, ocultar, user }) {
               </button>
             )
           })}
+
+        {/* Card de Opções — clique navega pra sub-aba */}
+        {opcoesPainel && (opcoesPainel.nAbertas > 0 || opcoesPainel.nEncerradas > 0) && (
+          <button onClick={() => onNavigate('opcoes')}
+            className="group relative bg-zinc-900 border border-zinc-800 hover:border-amber-800 rounded-xl p-5 text-left transition-all overflow-hidden">
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+              style={{ background: 'radial-gradient(ellipse at top left, rgba(245,158,11,0.05) 0%, transparent 60%)' }} />
+            <div className="relative">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] text-amber-500">◆</span>
+                    <div className="text-sm font-bold font-mono text-zinc-100">Opções</div>
+                  </div>
+                  <div className="text-[10px] font-mono text-zinc-600 mt-0.5">
+                    {opcoesPainel.nAbertas} abertas · {opcoesPainel.nEncerradas} encerradas
+                  </div>
+                </div>
+                <div className="text-2xl font-bold font-mono text-amber-400">
+                  {ocultar ? '••••••' : fmtMoneyFull(opcoesPainel.liquidacaoAberta)}
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <div className="text-[9px] font-mono uppercase text-zinc-600 mb-0.5">Aporte</div>
+                  <div className="text-xs font-mono text-zinc-400">{ocultar ? '••••••' : fmtMoneyFull(opcoesPainel.aporte)}</div>
+                </div>
+                <div>
+                  <div className="text-[9px] font-mono uppercase text-zinc-600 mb-0.5">Realizado</div>
+                  <div className={`text-xs font-mono font-semibold ${opcoesPainel.resultadoRealizado >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {ocultar ? '••••••' : (opcoesPainel.resultadoRealizado >= 0 ? '+' : '') + fmtMoneyFull(opcoesPainel.resultadoRealizado)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[9px] font-mono uppercase text-zinc-600 mb-0.5">Em aberto</div>
+                  <div className={`text-xs font-mono font-semibold ${opcoesPainel.resultadoEmAberto >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {ocultar ? '••••••' : (opcoesPainel.resultadoEmAberto >= 0 ? '+' : '') + fmtMoneyFull(opcoesPainel.resultadoEmAberto)}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 text-[10px] font-mono text-zinc-600 group-hover:text-amber-400 transition flex items-center gap-1">
+                Ver opções <ChevronRight size={10} />
+              </div>
+            </div>
+          </button>
+        )}
         </div>
       </div>
       {/* RANKING TOP 10 MELHOR / PIOR */}
