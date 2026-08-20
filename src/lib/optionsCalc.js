@@ -36,12 +36,14 @@ export function computePainel(operacoes, aporte) {
   const somaPerdasEnc = Math.abs(lossesEnc.reduce((s, o) => s + computeOperacao(o).resultado, 0));
 
   const ap = Number(aporte) || 0;
+  const liquidacaoAberta = abertas.reduce((s, o) => s + computeOperacao(o).liquidacao, 0);
   return {
     aporte: ap,
     capitalAlocado,
     saldoEmCaixa,
     resultadoRealizado,
     resultadoEmAberto,
+    liquidacaoAberta,
     nAbertas: abertas.length,
     nEncerradas: encerradas.length,
     taxaAcerto: encerradas.length > 0 ? (gainsEnc.length / encerradas.length) * 100 : 0,

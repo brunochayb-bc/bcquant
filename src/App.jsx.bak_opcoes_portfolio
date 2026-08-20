@@ -2068,13 +2068,13 @@ function PortfolioPage({ user }) {
               className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider border rounded-lg transition ${ocultar ? 'border-blue-500/40 text-blue-400 bg-blue-500/10' : 'border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600'}`}>
               {ocultar ? '👁 Mostrar' : '🙈 Ocultar'}
             </button>
-            {activeTab !== 'geral' && activeTab !== 'opcoes' && activeCarteira?.tipo !== 'outros' && (
+            {activeTab !== 'geral' && activeCarteira?.tipo !== 'outros' && (
               <button onClick={() => setShowAdd(true)}
                 className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-zinc-100 rounded-lg transition">
                 + Ativo
               </button>
             )}
-            {activeTab !== 'geral' && activeTab !== 'opcoes' && activeCarteira?.tipo === 'outros' && (
+            {activeTab !== 'geral' && activeCarteira?.tipo === 'outros' && (
               <button onClick={() => setShowAddOutro(true)}
                 className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider border border-blue-800 hover:border-blue-600 text-blue-400 hover:text-blue-100 rounded-lg transition">
                 + Ativo
@@ -2094,7 +2094,7 @@ function PortfolioPage({ user }) {
             className={`px-4 py-2.5 text-[11px] font-mono uppercase tracking-wider border-b-2 transition whitespace-nowrap ${activeTab === 'geral' ? 'border-blue-500 text-blue-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}>
             Visão Geral
           </button>
-          {[...carteiras].sort((a, b) => (a.tipo === 'outros' ? 1 : 0) - (b.tipo === 'outros' ? 1 : 0)).map(c => (
+          {carteiras.map(c => (
             <div key={c.id}
               className={`relative group flex items-center transition-all ${dragOver === c.id ? 'border-l-2 border-blue-500' : ''}`}
               draggable
@@ -2133,15 +2133,11 @@ function PortfolioPage({ user }) {
             className="px-3 py-2.5 text-[11px] font-mono text-zinc-600 hover:text-zinc-400 transition whitespace-nowrap">
             + carteira
           </button>
-          <button onClick={() => { setActiveTab('opcoes'); setEditingIdx(null) }}
-            className={`px-4 py-2.5 text-[11px] font-mono uppercase tracking-wider border-b-2 transition whitespace-nowrap ${activeTab === 'opcoes' ? 'border-amber-500 text-amber-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}>
-            Opções
-          </button>
         </div>
       </div>
 
       {/* ADD TICKER */}
-      {showAdd && activeTab !== 'geral' && activeTab !== 'opcoes' && (
+      {showAdd && activeTab !== 'geral' && (
         <div className="px-6 py-3 border-b border-zinc-800 bg-zinc-900/50 flex items-center gap-3 flex-wrap">
           <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Novo ativo:</span>
           <input autoFocus type="text" placeholder="Ex: PETR4 ou VOO" value={newTicker}
@@ -2241,8 +2237,6 @@ function PortfolioPage({ user }) {
       <div className="px-6 py-6">
         {activeTab === 'geral'
           ? <VisaoGeral carteiras={carteiras} quotes={quotes} onNavigate={setActiveTab} ocultar={ocultar} />
-          : activeTab === 'opcoes'
-          ? <OptionsTab uid={user?.uid} />
           : activeCarteira?.tipo === 'outros'
             ? <OutrosAtivosTable
                 carteira={activeCarteira}
@@ -2745,6 +2739,7 @@ const NAV_ITEMS = [
   { id: 'screening', label: 'Screening Graham', icon: BarChart2 },
   { id: 'portfolio', label: 'Portfólio',         icon: TrendingUp },
     { id: 'hilo',      label: 'Hi-Lo',           icon: Activity      },
+    { id: 'opcoes',    label: 'Opções',          icon: TrendingUp    },
 ]
 
 export default function App() {
@@ -2840,6 +2835,7 @@ export default function App() {
         {page === 'screening' && <ScreeningPage />}
         {page === 'portfolio' && <PortfolioPage user={user} />}
         {page === 'hilo'      && <HiloTab uid={user?.uid} />}
+        {page === 'opcoes'    && <OptionsTab uid={user?.uid} />}
             {page === 'ticker'    && selectedTicker && <TickerPage ticker={selectedTicker} onBack={() => setPage('overview')} />}
       </main>
     </div>

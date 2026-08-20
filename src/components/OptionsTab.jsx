@@ -236,11 +236,11 @@ export default function OptionsTab({ uid }) {
                       className={`${inp} text-right font-mono w-24`} />
                   </td>
                   <td className="px-1 py-1">
-                    <input type="date"
-                      value={isAberta ? '' : (op.dataFinal || '')}
-                      disabled={isAberta}
-                      onChange={e => updateOp(op.id, {dataFinal: e.target.value})}
-                      className={`${inp} w-28 ${isAberta ? 'opacity-20 cursor-not-allowed' : ''}`} />
+                    {!isAberta && (
+                      <input type="date" value={op.dataFinal || ''}
+                        onChange={e => updateOp(op.id, {dataFinal: e.target.value})}
+                        className={`${inp} w-28`} />
+                    )}
                   </td>
                   <td className="px-2 py-1 text-right text-neutral-300 font-mono">{fmtBRL(c.liquidacao)}</td>
                   <td className={`px-2 py-1 text-right font-mono ${c.resultado > 0 ? 'text-emerald-400' : c.resultado < 0 ? 'text-red-400' : 'text-neutral-400'}`}>{fmtBRL(c.resultado)}</td>
@@ -263,6 +263,21 @@ export default function OptionsTab({ uid }) {
               </td></tr>
             )}
           </tbody>
+          {painel.nAbertas > 0 && (
+            <tfoot className="bg-neutral-900 border-t-2 border-neutral-700">
+              <tr>
+                <td colSpan={9} className="px-3 py-2 text-right text-[11px] uppercase tracking-wider text-neutral-400 font-semibold">
+                  Total Liquidação (abertas) →
+                </td>
+                <td className="px-2 py-2 text-right font-mono text-yellow-300 font-bold">
+                  {m(fmtBRL(painel.liquidacaoAberta))}
+                </td>
+                <td colSpan={5} className="px-2 py-2 text-[10px] text-neutral-500 italic">
+                  feed p/ Visão Geral
+                </td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
     </div>
