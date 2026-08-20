@@ -1336,7 +1336,7 @@ function OutrosAtivosTable({ carteira, ocultar, editingIdx, editBuf, onEditBuf, 
   const categoryEntries = [...grouped.entries()].sort((a, b) => b[1].total - a[1].total)
 
   const totalValor = all.reduce((s, o) => s + (o.valorAtual || 0), 0)
-  const existingCats = Array.from(new Set(all.map(o => o.categoria || 'Fundos'))).sort()
+  const existingCats = Array.from(new Set([...all.map(o => o.categoria || 'Fundos'), 'Fundos', 'Renda Fixa', 'Caixa'])).sort()
 
   const openMove = (o) => {
     setMoveTarget({ id: o.id, nome: o.nome, categoria: o.categoria || 'Fundos' })
@@ -2208,7 +2208,7 @@ function PortfolioPage({ user }) {
 
       {/* ADD OUTRO ATIVO */}
       {showAddOutro && activeCarteira?.tipo === 'outros' && (() => {
-        const existingCats = Array.from(new Set((activeCarteira.outros || []).map(o => o.categoria || 'Fundos'))).sort()
+        const existingCats = Array.from(new Set([...(activeCarteira.outros || []).map(o => o.categoria || 'Fundos'), 'Fundos', 'Renda Fixa', 'Caixa'])).sort()
         return (
         <div className="px-6 py-3 border-b border-zinc-800 bg-zinc-900/50 flex items-center gap-3 flex-wrap">
           <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Novo ativo:</span>
